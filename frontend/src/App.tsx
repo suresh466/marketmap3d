@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 import L from "leaflet";
 import {
+	GeoJSON,
 	MapContainer,
 	Marker,
 	Popup,
@@ -10,10 +11,13 @@ import {
 	useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { loadGraphmlAsGeoJson } from "./utils";
 
 function App() {
 	const [position, setPosition] = useState<L.LatLng | null>(null);
 	const [mapType, setMapType] = useState<"normal" | "satellite">("normal");
+	const [floorPlanData, setFloorPlanData] =
+		useState<GeoJSON.FeatureCollection | null>(null);
 
 	// Map layer URLs
 	const mapLayers = {
@@ -29,6 +33,34 @@ function App() {
 		satellite:
 			"Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
 	};
+
+	// // Load floor plan GeoJSON
+	// useEffect(() => {
+	// 	fetch("./floorplan.geojson")
+	// 		.then((response) => {
+	// 			if (!response.ok) {
+	// 				throw new Error(`HTTP error! Status: ${response.status}`);
+	// 			}
+	// 			return response.json();
+	// 		})
+	// 		.then((data) => {
+	// 			setFloorPlanData(data);
+	// 		})
+	// 		.catch((error) => {
+	// 			console.error("Error loading floor plan:", error);
+	// 		});
+	// }, []);
+
+	// Load floor plan from GraphML
+	useEffect(() => {
+		loadGraphmlAsGeoJson("../fleamarket_floormap_scaled.graphml")
+			.then((data) => {
+				setFloorPlanData(data);
+			})
+			.catch((error) => {
+				console.error("Error loading floor plan:", error);
+			});
+	}, []);
 
 	// Component to handle location finding
 	function LocationFinder() {
@@ -61,6 +93,48 @@ function App() {
 		setMapType((prev) => (prev === "normal" ? "satellite" : "normal"));
 	};
 
+	// Style function for floor plan features
+	const floorPlanStyle = (feature: any) => {
+		const featureType = feature.properties?.type || "default";
+
+		switch (featureType) {
+			case "room":
+				return {
+					color: "#3388ff",
+					weight: 2,
+					opacity: 0.8,
+					fillColor: "#3388ff",
+					fillOpacity: 0.2,
+				};
+			case "wall":
+				return {
+					color: "#000000",
+					weight: 3,
+					opacity: 0.9,
+				};
+			default:
+				return {
+					color: "#777777",
+					weight: 1,
+					opacity: 0.7,
+				};
+		}
+	};
+
+	// For floor plan feature popups
+	const onEachFeature = (feature: any, layer: L.Layer) => {
+		if (feature.properties) {
+			const properties = feature.properties;
+			let popupContent = `<div><strong>Type:</strong> ${properties.type || "Unknown"}</div>`;
+
+			if (properties.id) {
+				popupContent += `<div><strong>ID:</strong> ${properties.id}</div>`;
+			}
+
+			layer.bindPopup(popupContent);
+		}
+	};
+
 	return (
 		<div className="map-container">
 			<div className="controls">
@@ -89,6 +163,14 @@ function App() {
 					<Marker position={position}>
 						<Popup>Your location</Popup>
 					</Marker>
+				)}
+
+				{floorPlanData && (
+					<GeoJSON
+						data={floorPlanData}
+						style={floorPlanStyle}
+						onEachFeature={onEachFeature}
+					/>
 				)}
 			</MapContainer>
 		</div>
