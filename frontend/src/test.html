@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Extrude polygons for 3D indoor mapping</title>
+    <meta property="og:description" content="Create a 3D indoor map with the fill-extrude-height paint property." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.4.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@5.4.0/dist/maplibre-gl.js'></script>
+    <script src='https://unpkg.com/@turf/turf@6.5.0/turf.min.js'></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            'id': 'raster',
+            'version': 8,
+            'name': 'Raster tiles',
+            'center': [0, 0],
+            'zoom': 0,
+            'sources': {
+                'raster-tiles': {
+                    'type': 'raster',
+                    'tiles': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    'tileSize': 256,
+                    'minzoom': 0,
+                    'maxzoom': 19
+                }
+            },
+            'layers': [
+                {
+                    'id': 'background',
+                    'type': 'background',
+                    'paint': {
+                        'background-color': '#e0dfdf'
+                    }
+                },
+                {
+                    'id': 'simple-tiles',
+                    'type': 'raster',
+                    'source': 'raster-tiles'
+                }
+            ]
+        },
+        center: [-79.35949678711926, 43.813003152496364],
+        zoom: 15.99,
+        pitch: 60, // Increased pitch to better see inside the rooms
+        bearing: 20,
+        canvasContextAttributes: {antialias: true}
+    });
+
+    map.on('load', () => {
+        // Load the floorplan GeoJSON data
+        fetch('../floorplan.geojson')
+            .then(response => response.json())
+            .then(data => {
+                // Process the data to create floors and walls
+                const floorFeatures = [];
+                const wallFeatures = [];
+                
+                data.features.forEach(feature => {
+                    if (feature.geometry.type !== 'Polygon') return;
+                    
+                    // Add the original feature as the floor (with slight negative buffer)
+                    try {
+                        // Create a slightly smaller polygon for the floor
+                        const floor = turf.buffer(feature, -0.0000015, {units: 'degrees'});
+                        
+                        // Add the floor feature
+                        floorFeatures.push({
+                            ...feature,
+                            geometry: floor.geometry,
+                            properties: {
+                                ...feature.properties,
+                                isFloor: true
+                            }
+                        });
+                        
+                        // Create a LineString for each polygon ring to represent walls
+                        const coords = feature.geometry.coordinates[0];
+
+                        // Create a LineString from the polygon coordinates
+                        const perimeterLine = {
+                            type: 'Feature',
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: coords
+                            }
+                        };
+                        
+                        // Buffer the line to create a polygon "ribbon" with actual width
+                        const wallPolygon = turf.buffer(perimeterLine, 0.0000003, {units: 'degrees'});
+                        
+                        // Create a wall feature
+                        wallFeatures.push({
+                            type: 'Feature',
+                            geometry: wallPolygon.geometry, // This will be a Polygon instead of LineString
+                            properties: {
+                                ...feature.properties,
+                                isWall: true
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Failed to process feature:', e);
+                        // If processing fails, just use the original feature as floor
+                        floorFeatures.push({
+                            ...feature,
+                            properties: {
+                                ...feature.properties,
+                                isFloor: true
+                            }
+                        });
+                    }
+                });
+
+                // Create the floor layer source
+                map.addSource('floors', {
+                    'type': 'geojson',
+                    'data': {
+                        type: 'FeatureCollection',
+                        features: floorFeatures
+                    }
+                });
+                
+                // Create the wall layer source
+                map.addSource('walls', {
+                    'type': 'geojson',
+                    'data': {
+                        type: 'FeatureCollection',
+                        features: wallFeatures
+                    }
+                });
+
+                // Add the floors as a 3D extrusion with low height
+                map.addLayer({
+                    'id': 'floor-extrusion',
+                    'type': 'fill-extrusion',
+                    'source': 'floors',
+                    'paint': {
+                        // Use the "type" property to color different room types
+                        'fill-extrusion-color': [
+                            'match',
+                            ['get', 'type'],
+                            'room', '#f5f5dc', // Light beige for floors
+                            /* default */ '#eaeaea'  // Light gray default
+                        ],
+                        // Set floor height
+                        'fill-extrusion-height': 1,
+                        // Start at base level
+                        'fill-extrusion-base': 0,
+                        // Add slight opacity
+                        'fill-extrusion-opacity': 0.9,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                });
+
+                // Add the wall 3D extrusion
+                map.addLayer({
+                    'id': 'wall-3d-extrusion',
+                    'type': 'fill-extrusion',
+                    'source': 'walls',
+                    // Remove this filter since we're now using Polygon instead of LineString
+                    // 'filter': ['==', ['geometry-type'], 'LineString'],
+                    'paint': {
+                        'fill-extrusion-color': '#dddddd', // Light gray for walls
+                        'fill-extrusion-height': 2, // Wall height (taller than floors)
+                        'fill-extrusion-base': 0, // Start from floor height
+                        'fill-extrusion-opacity': 1,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                });
+            });
+            
+        // Add navigation controls to help users navigate the 3D view
+        map.addControl(new maplibregl.NavigationControl());
+    });
+</script>
+</body>
+</html>
