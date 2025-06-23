@@ -43,7 +43,7 @@ function App() {
 
         // Buffer the line to create a polygon "ribbon" with actual width
         let wallFeature = buffer(perimeterLine, 0.0000003, { units: 'degrees' });
-        wallFeatures.push(wallFeature)
+        wallFeature ? wallFeatures.push(wallFeature) : console.log('wall not built, something went wrong!')
 
       }
       const floorFeatureCollection: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: floorFeatures }
