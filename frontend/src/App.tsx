@@ -2,7 +2,7 @@ import "./App.css";
 import { Layer, Map, Source, NavigationControl, MarkerDragEvent, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useState } from "react";
-import { buffer } from "@turf/turf";
+import { buffer, explode, nearestPoint } from "@turf/turf";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 
 function App() {
@@ -17,38 +17,13 @@ function App() {
   useEffect(() => {
     if (!walkwayCollection) return
 
-    // Helper function to find nearest point on network
-    function findNearestNetworkPoint(targetPoint: GeoJSON.Position, walkwayCollection: GeoJSON.FeatureCollection<GeoJSON.LineString>) {
-      let nearestPoint = null;
-      let minDistance = Infinity;
-
-      walkwayCollection.features.forEach(feature => {
-        feature.geometry.coordinates.forEach(coord => {
-          const distance = Math.sqrt(
-            Math.pow(coord[0] - targetPoint[0], 2) +
-            Math.pow(coord[1] - targetPoint[1], 2)
-          );
-
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestPoint = coord;
-          }
-        });
-      });
-
-      return nearestPoint;
-    }
-
-    // Find nearest network points for start and finish
-    const nearestStartPoint = findNearestNetworkPoint([start.lng, start.lat], walkwayCollection);
-    const nearestFinishPoint = findNearestNetworkPoint([finish.lng, finish.lat], walkwayCollection);
 
     const startPoint = {
       type: 'Feature',
       id: 1,
       geometry: {
         type: "Point",
-        coordinates: nearestStartPoint
+        coordinates: [start.lng, start.lat]
       },
       properties: {}
     }
@@ -58,15 +33,17 @@ function App() {
       id: 2,
       geometry: {
         type: "Point",
-        coordinates: nearestFinishPoint
+        coordinates: [finish.lng, finish.lat]
       },
       properties: {}
     }
 
-    console.log(walkwayCollection)
+    const walkwayPoints = explode(walkwayCollection)
+    const nearestStartPoint = nearestPoint(startPoint, walkwayPoints)
+    const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints)
 
     const pathFinder = new PathFinder(walkwayCollection)
-    var path = pathFinder.findPath(startPoint, finishPoint)
+    let path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint)
     console.log(path)
     setPath(pathToGeoJSON(path))
 
