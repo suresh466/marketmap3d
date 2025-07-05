@@ -9,7 +9,7 @@ function App() {
 
   const [floorFeatureCollection, setFloorFeatureCollection] = useState<GeoJSON.FeatureCollection | null>(null)
   const [wallFeatureCollection, setWallFeatureCollection] = useState<GeoJSON.FeatureCollection | null>(null)
-  const [walkwayCollection, setWalkwayCollection] = useState<GeoJSON.FeatureCollection | null>(null)
+  const [walkwayCollection, setWalkwayCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(null)
   const [start, setStart] = useState({ lng: -79.35988895104677, lat: 43.812871320851855 })
   const [finish, setFinish] = useState({ lng: -79.35984380982431, lat: 43.81274916336028 })
   const [path, setPath] = useState(null)
@@ -17,13 +17,38 @@ function App() {
   useEffect(() => {
     if (!walkwayCollection) return
 
+    // Helper function to find nearest point on network
+    function findNearestNetworkPoint(targetPoint: GeoJSON.Position, walkwayCollection: GeoJSON.FeatureCollection<GeoJSON.LineString>) {
+      let nearestPoint = null;
+      let minDistance = Infinity;
+
+      walkwayCollection.features.forEach(feature => {
+        feature.geometry.coordinates.forEach(coord => {
+          const distance = Math.sqrt(
+            Math.pow(coord[0] - targetPoint[0], 2) +
+            Math.pow(coord[1] - targetPoint[1], 2)
+          );
+
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestPoint = coord;
+          }
+        });
+      });
+
+      return nearestPoint;
+    }
+
+    // Find nearest network points for start and finish
+    const nearestStartPoint = findNearestNetworkPoint([start.lng, start.lat], walkwayCollection);
+    const nearestFinishPoint = findNearestNetworkPoint([finish.lng, finish.lat], walkwayCollection);
+
     const startPoint = {
       type: 'Feature',
       id: 1,
       geometry: {
         type: "Point",
-        coordinates: [start.lng, start.lat]
-        // coordinates: [-79.36000124428645, 43.81296449029094],
+        coordinates: nearestStartPoint
       },
       properties: {}
     }
@@ -33,14 +58,12 @@ function App() {
       id: 2,
       geometry: {
         type: "Point",
-        coordinates: [finish.lng, finish.lat]
-        // coordinates: [-79.35228909925472, 43.81319535869511]
+        coordinates: nearestFinishPoint
       },
       properties: {}
     }
 
     console.log(walkwayCollection)
-
 
     const pathFinder = new PathFinder(walkwayCollection)
     var path = pathFinder.findPath(startPoint, finishPoint)
@@ -65,7 +88,7 @@ function App() {
     async function processFeatures() {
       const response = await fetch('/floorplan.geojson')
       const featureCollection = await response.json()
-      const response_walkways = await fetch('/walkways.geojson')
+      const response_walkways = await fetch('/walkways-linestring.geojson')
       const walkwayCollection = await response_walkways.json()
       setWalkwayCollection(walkwayCollection)
 
