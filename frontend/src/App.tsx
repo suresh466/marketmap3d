@@ -29,7 +29,7 @@ function App() {
         }
       }
     }
-    const doorPointCollection = points(doorCoordinates)
+    const doorPointCollection = points(doorCoordinates, { isdoor: true })
     setDoorPointCollection(doorPointCollection)
 
   }, [floormapCollection, walkwayCollection, start, finish])
@@ -131,9 +131,8 @@ function App() {
 
   return (
     <Map
-      // initialViewState={{ longitude: -79.35949678711926, latitude: 43.813003152496364, zoom: 15.99, pitch: 60, bearing: 20, }}
-      initialViewState={{ longitude: -79.35949678711926, latitude: 43.813003152496364, zoom: 15.99 }}
-      style={{ width: 900, height: 600 }}
+      initialViewState={{ longitude: -79.35934795, latitude: 43.81288656, zoom: 19.3, bearing: -16.4, }}
+      style={{ position: 'relative', width: '100%', height: '100%' }}
       mapStyle={{
         "name": "marketmap",
         "version": 8,
@@ -156,10 +155,10 @@ function App() {
         ]
       }}>
 
-      {floorCollection && (
-        <Source id="floor" type="geojson" data={floorCollection}>
+      {floormapCollection && (
+        <Source id="floor" type="geojson" data={floormapCollection}>
           <Layer
-            id="floor-extrusion"
+            id="floormap-extrusion"
             type="fill-extrusion"
             paint={{
               'fill-extrusion-color': '#f5f5dc', // Light beige
@@ -167,46 +166,70 @@ function App() {
               'fill-extrusion-height': 1,
               // Start at base level
               'fill-extrusion-base': 0,
-              // Add slight opacity
               'fill-extrusion-opacity': 1,
               'fill-extrusion-vertical-gradient': true
             }} />
         </Source>
       )}
-      {wallCollection && (
-        <Source id="wall" type="geojson" data={wallCollection}>
-          <Layer
-            id='wall-3d-extrusion'
-            type="fill-extrusion"
-            paint={{
-              'fill-extrusion-color': '#dddddd', // Light gray for walls
-              'fill-extrusion-height': 2, // Wall height (taller than floors)
-              'fill-extrusion-base': 0, // Start from floor height
-              'fill-extrusion-opacity': 1,
-              'fill-extrusion-vertical-gradient': true
-            }} />
-        </Source>
-      )}
-      {path && (
-        <Source id='path' type='geojson' data={path}>
-          <Layer
-            id='path-layer'
-            type='line'
-            paint={{ 'line-color': 'green', 'line-width': 4 }} />
-        </Source>
-      )
+      {
+        floorCollection && (
+          <Source id="floor" type="geojson" data={floorCollection}>
+            <Layer
+              id="floor-extrusion"
+              type="fill-extrusion"
+              paint={{
+                'fill-extrusion-color': '#f5f5dc', // Light beige
+                // Set floor height
+                'fill-extrusion-height': 1,
+                // Start at base level
+                'fill-extrusion-base': 1,
+                // Add slight opacity
+                'fill-extrusion-opacity': 1,
+                'fill-extrusion-vertical-gradient': true
+              }} />
+          </Source>
+        )
       }
-      {doorPointCollection && (
-        <Source id='door' type='geojson' data={doorPointCollection}>
-          <Layer
-            id='door-layer'
-            type='circle' />
-        </Source>
-      )
+      {
+        wallCollection && (
+          <Source id="wall" type="geojson" data={wallCollection}>
+            <Layer
+              id='wall-3d-extrusion'
+              type="fill-extrusion"
+              paint={{
+                'fill-extrusion-color': '#dddddd', // Light gray for walls
+                'fill-extrusion-height': 2, // Wall height (taller than floors)
+                'fill-extrusion-base': 1, // Start from floor height
+                'fill-extrusion-opacity': 1,
+                'fill-extrusion-vertical-gradient': true
+              }} />
+          </Source>
+        )
       }
-      <Marker onDragEnd={(e) => handleDragEnd(e, 'start')} color="red" longitude={start.lng} latitude={start.lat} anchor="bottom" draggable={true} >
+      {
+        path && (
+          <Source id='path' type='geojson' data={path}>
+            <Layer
+              id='path-layer'
+              type='line'
+              paint={{ 'line-color': 'green', 'line-width': 4 }} />
+          </Source>
+        )
+      }
+      {
+        doorPointCollection && (
+          <Source id='door' type='geojson' data={doorPointCollection}>
+            <Layer
+              id='door-layer'
+              type='circle' />
+          </Source>
+        )
+      }
+
+      <Marker onDragEnd={(e) => handleDragEnd(e, 'start')} color="green" longitude={start.lng} latitude={start.lat} anchor="center" draggable={true} >
+        <img style={{ height: '2rem' }} src="./start.png" />
       </Marker>
-      <Marker onDragEnd={(e) => handleDragEnd(e, 'finish')} color="green" longitude={finish.lng} latitude={finish.lat} anchor="bottom" draggable={true} >
+      <Marker onDragEnd={(e) => handleDragEnd(e, 'finish')} color="red" longitude={finish.lng} latitude={finish.lat} anchor="bottom" draggable={true} >
       </Marker>
       <NavigationControl />
     </Map >
