@@ -1,5 +1,5 @@
 import "./App.css";
-import { Layer, Map, Source, NavigationControl, MarkerDragEvent, Marker } from 'react-map-gl/maplibre';
+import { Layer, Map, Source, NavigationControl, MarkerDragEvent, Marker, MapLayerMouseEvent, Popup, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useState } from "react";
 import { booleanPointInPolygon, buffer, explode, nearestPoint, points } from "@turf/turf";
@@ -7,6 +7,8 @@ import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 
 function App() {
 
+  const [popupCoord, setPopupCoord] = useState({})
+  const [showPopup, setShowPopup] = useState<boolean>(false)
   const [doorPointCollection, setDoorPointCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.Point> | null>(null)
   const [floormapCollection, setFloormapCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>(null)
   const [floorCollection, setfloorCollection] = useState<GeoJSON.FeatureCollection | null>(null)
@@ -15,6 +17,13 @@ function App() {
   const [start, setStart] = useState({ lng: -79.35988895104677, lat: 43.812871320851855 })
   const [finish, setFinish] = useState({ lng: -79.35984380982431, lat: 43.81274916336028 })
   const [path, setPath] = useState(null)
+
+  function handleFloormapClick(e: MapLayerMouseEvent) {
+    if (!e.features[0]) return
+
+    setPopupCoord(e.lngLat)
+    setShowPopup(true)
+  }
 
   useEffect(() => {
     if (!(floormapCollection && walkwayCollection)) return
@@ -131,7 +140,9 @@ function App() {
 
   return (
     <Map
-      initialViewState={{ longitude: -79.35934795, latitude: 43.81288656, zoom: 19.3, bearing: -16.4, }}
+      interactiveLayerIds={['floormap-extrusion']}
+      onClick={(e) => handleFloormapClick(e)}
+      initialViewState={{ longitude: -79.35934795, latitude: 43.81288656, zoom: 19.3, bearing: 74.5, }}
       style={{ position: 'relative', width: '100%', height: '100%' }}
       mapStyle={{
         "name": "marketmap",
@@ -226,6 +237,20 @@ function App() {
         )
       }
 
+      {
+        showPopup && (
+          <Popup longitude={popupCoord.lng} latitude={popupCoord.lat} onClose={() => setShowPopup(false)} >
+            <button type='button' onClick={() => {
+              setStart({ lng: popupCoord.lng, lat: popupCoord.lat })
+              setShowPopup(false)
+            }}>Im here</button>
+            <button type='button' onClick={() => {
+              setFinish({ lng: popupCoord.lng, lat: popupCoord.lat })
+              setShowPopup(false)
+            }}>Get here</button>
+          </Popup>
+        )
+      }
       <Marker onDragEnd={(e) => handleDragEnd(e, 'start')} color="green" longitude={start.lng} latitude={start.lat} anchor="center" draggable={true} >
         <img style={{ height: '2rem' }} src="./start.png" />
       </Marker>
