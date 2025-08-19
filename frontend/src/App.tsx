@@ -1,264 +1,313 @@
+/** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 import "./App.css";
-import { Layer, Map, Source, NavigationControl, MarkerDragEvent, Marker, MapLayerMouseEvent, Popup, ScaleControl } from 'react-map-gl/maplibre';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useState } from "react";
-import { booleanPointInPolygon, buffer, explode, nearestPoint, points } from "@turf/turf";
+
+import type {
+	LngLat,
+	MapLayerMouseEvent,
+	MarkerDragEvent,
+} from "react-map-gl/maplibre";
+import {
+	Layer,
+	Map as M,
+	Marker,
+	NavigationControl,
+	Popup,
+	Source,
+} from "react-map-gl/maplibre";
+
+import "maplibre-gl/dist/maplibre-gl.css";
+import {
+	booleanPointInPolygon,
+	buffer,
+	explode,
+	nearestPoint,
+	points,
+} from "@turf/turf";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
+import { useEffect, useState } from "react";
 
 function App() {
+	const [popupCoord, setPopupCoord] = useState<LngLat>();
+	const [showPopup, setShowPopup] = useState<boolean>(false);
+	const [doorPointCollection, setDoorPointCollection] =
+		useState<GeoJSON.FeatureCollection<GeoJSON.Point> | null>(null);
+	const [floorplan, setFloorplan] =
+		useState<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>(null);
+	const [floorCollection, setfloorCollection] =
+		useState<GeoJSON.FeatureCollection | null>(null);
+	const [wallCollection, setWallCollection] =
+		useState<GeoJSON.FeatureCollection | null>(null);
+	const [walkwayCollection, setWalkwayCollection] =
+		useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(null);
+	const [start, setStart] = useState({
+		lng: -79.35988895104677,
+		lat: 43.812871320851855,
+	});
+	const [finish, setFinish] = useState({
+		lng: -79.35984380982431,
+		lat: 43.81274916336028,
+	});
+	const [path, setPath] = useState(null);
 
-  const [popupCoord, setPopupCoord] = useState({})
-  const [showPopup, setShowPopup] = useState<boolean>(false)
-  const [doorPointCollection, setDoorPointCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.Point> | null>(null)
-  const [floormapCollection, setFloormapCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>(null)
-  const [floorCollection, setfloorCollection] = useState<GeoJSON.FeatureCollection | null>(null)
-  const [wallCollection, setWallCollection] = useState<GeoJSON.FeatureCollection | null>(null)
-  const [walkwayCollection, setWalkwayCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(null)
-  const [start, setStart] = useState({ lng: -79.35988895104677, lat: 43.812871320851855 })
-  const [finish, setFinish] = useState({ lng: -79.35984380982431, lat: 43.81274916336028 })
-  const [path, setPath] = useState(null)
+	function handleFloormapClick(e: MapLayerMouseEvent) {
+		if (e.features) {
+			setPopupCoord(e.lngLat);
+			setShowPopup(true);
+		}
+	}
 
-  function handleFloormapClick(e: MapLayerMouseEvent) {
-    if (!e.features[0]) return
+	useEffect(() => {
+		if (!(floorplan && walkwayCollection)) return;
+		const walkwayPoints = explode(walkwayCollection);
+		const bufferedBooths = floorplan.features
+			.map((booth) => buffer(booth, 0.0000001))
+			.filter((booth): booth is GeoJSON.Feature<GeoJSON.Polygon> =>
+				Boolean(booth),
+			);
 
-    setPopupCoord(e.lngLat)
-    setShowPopup(true)
-  }
+		const doorCoordinates: number[][] = [];
+		for (const booth of bufferedBooths) {
+			for (const point of walkwayPoints.features) {
+				if (booleanPointInPolygon(point, booth)) {
+					doorCoordinates.push(point.geometry.coordinates);
+					break;
+				}
+			}
+		}
+		const doorPointCollection = points(doorCoordinates, { isdoor: true });
+		setDoorPointCollection(doorPointCollection);
+	}, [floorplan, walkwayCollection]);
 
-  useEffect(() => {
-    if (!(floormapCollection && walkwayCollection)) return
-    const walkwayPoints = explode(walkwayCollection)
-    let doorCoordinates: number[][] = []
-    for (const booth of floormapCollection.features) {
-      const bufferedBooth = buffer(booth, 0.0000001);
-      for (const point of walkwayPoints.features) {
-        if (booleanPointInPolygon(point, bufferedBooth)) {
-          doorCoordinates.push(point.geometry.coordinates)
-          break
-        }
-      }
-    }
-    const doorPointCollection = points(doorCoordinates, { isdoor: true })
-    setDoorPointCollection(doorPointCollection)
+	useEffect(() => {
+		if (!walkwayCollection) return;
 
-  }, [floormapCollection, walkwayCollection, start, finish])
+		const startPoint: GeoJSON.Feature<GeoJSON.Point> = {
+			type: "Feature",
+			id: 1,
+			geometry: {
+				type: "Point",
+				coordinates: [start.lng, start.lat],
+			},
+			properties: {},
+		};
 
+		const finishPoint: GeoJSON.Feature<GeoJSON.Point> = {
+			type: "Feature",
+			id: 2,
+			geometry: {
+				type: "Point",
+				coordinates: [finish.lng, finish.lat],
+			},
+			properties: {},
+		};
 
-  useEffect(() => {
-    if (!walkwayCollection) return
+		const walkwayPoints = explode(walkwayCollection);
+		const nearestStartPoint = nearestPoint(startPoint, walkwayPoints);
+		const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints);
 
-    const startPoint: GeoJSON.Feature<GeoJSON.Point> = {
-      type: 'Feature',
-      id: 1,
-      geometry: {
-        type: "Point",
-        coordinates: [start.lng, start.lat]
-      },
-      properties: {}
-    }
+		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
+		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
+		setPath(pathToGeoJSON(path));
+	}, [start, finish, walkwayCollection]);
 
-    const finishPoint: GeoJSON.Feature<GeoJSON.Point> = {
-      type: 'Feature',
-      id: 2,
-      geometry: {
-        type: "Point",
-        coordinates: [finish.lng, finish.lat]
-      },
-      properties: {}
-    }
+	function handleDragEnd(e: MarkerDragEvent, which: string) {
+		if (which === "start") {
+			setStart(e.lngLat);
+		}
+		if (which === "finish") {
+			setFinish(e.lngLat);
+		}
+	}
 
-    const walkwayPoints = explode(walkwayCollection)
-    const nearestStartPoint = nearestPoint(startPoint, walkwayPoints)
-    const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints)
+	useEffect(() => {
+		async function processFeatures() {
+			const response = await fetch("/floorplan.geojson");
+			const floorplan = await response.json();
 
-    const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 })
-    let path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint)
-    setPath(pathToGeoJSON(path))
-  }, [start, finish])
+			const response_walkways = await fetch(
+				"../public/walkway-connected-complete-single.geojson",
+			);
+			const walkwayCollection = await response_walkways.json();
 
+			const floorFeatures = [];
+			const wallFeatures = [];
+			for (const feature of floorplan.features) {
+				let floorFeature = {
+					...feature,
+					properties: {
+						...feature.properties,
+						type: "floor",
+					},
+				};
+				floorFeature = buffer(feature, -0.0000015, { units: "degrees" });
+				floorFeatures.push(floorFeature);
 
-  function handleDragEnd(e: MarkerDragEvent, which: string) {
-    if (which === 'start') {
-      setStart(e.lngLat)
-    }
-    if (which === 'finish') {
-      setFinish(e.lngLat)
-    }
-  }
+				// Create a LineString from the polygon coordinates
+				const perimeterLine = {
+					...feature, // Copy all properties from original feature
+					geometry: {
+						coordinates: feature.geometry.coordinates[0],
+						type: "LineString",
+					},
+					properties: {
+						...feature.properties,
+						type: "wall",
+					},
+				};
 
-  useEffect(() => {
-    async function processFeatures() {
-      const response = await fetch('/floorplan.geojson')
-      const floormapCollection = await response.json()
+				// Buffer the line to create a polygon with actual width
+				const wallFeature = buffer(perimeterLine, 0.0000003, {
+					units: "degrees",
+				});
+				wallFeature
+					? wallFeatures.push(wallFeature)
+					: console.log("wall not built, something went wrong!");
+			}
+			const floorCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
+				type: "FeatureCollection",
+				features: floorFeatures,
+			};
+			const wallFeatureCollection: GeoJSON.FeatureCollection = {
+				type: "FeatureCollection",
+				features: wallFeatures,
+			};
 
-      const response_walkways = await fetch('../public/walkway-connected-complete-single.geojson')
-      const walkwayCollection = await response_walkways.json()
+			setFloorplan(floorplan);
+			setfloorCollection(floorCollection);
+			setWallCollection(wallFeatureCollection);
+			setWalkwayCollection(walkwayCollection);
+		}
+		processFeatures();
+	}, []);
 
+	return (
+		<M
+			interactiveLayerIds={["floormap-extrusion"]}
+			onClick={(e) => handleFloormapClick(e)}
+			initialViewState={{
+				longitude: -79.35934795,
+				latitude: 43.81288656,
+				zoom: 19.3,
+				bearing: 74.5,
+			}}
+			style={{ position: "relative", width: "100%", height: "100%" }}
+			mapStyle={{
+				name: "marketmap",
+				version: 8,
 
-      let floorFeatures = []
-      let wallFeatures = []
-      for (const feature of floormapCollection.features) {
-        let floorFeature = {
-          ...feature,
-          properties: {
-            ...feature.properties,
-            type: 'floor'
-          }
-        }
-        floorFeature = buffer(feature, -0.0000015, { units: 'degrees' });
-        floorFeatures.push(floorFeature)
+				sources: {
+					"raster-tiles": {
+						type: "raster",
+						tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+						tileSize: 256,
+						minzoom: 0,
+						maxzoom: 19,
+					},
+				},
+				layers: [
+					{
+						id: "simple-tiles",
+						type: "raster",
+						source: "raster-tiles",
+					},
+				],
+			}}
+		>
+			{floorCollection && (
+				<Source id="floor" type="geojson" data={floorCollection}>
+					<Layer
+						id="floor-extrusion"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#f5f5dc", // Light beige
+							// Set floor height
+							"fill-extrusion-height": 1,
+							// Start at base level
+							"fill-extrusion-base": 1,
+							// Add slight opacity
+							"fill-extrusion-opacity": 1,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					/>
+				</Source>
+			)}
+			{wallCollection && (
+				<Source id="wall" type="geojson" data={wallCollection}>
+					<Layer
+						id="wall-3d-extrusion"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#dddddd", // Light gray for walls
+							"fill-extrusion-height": 2, // Wall height (taller than floors)
+							"fill-extrusion-base": 1, // Start from floor height
+							"fill-extrusion-opacity": 1,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					/>
+				</Source>
+			)}
+			{path && (
+				<Source id="path" type="geojson" data={path}>
+					<Layer
+						id="path-layer"
+						type="line"
+						paint={{ "line-color": "green", "line-width": 4 }}
+					/>
+				</Source>
+			)}
+			{doorPointCollection && (
+				<Source id="door" type="geojson" data={doorPointCollection}>
+					<Layer id="door-layer" type="circle" />
+				</Source>
+			)}
 
-        // Create a LineString from the polygon coordinates
-        const perimeterLine = {
-          ...feature,  // Copy all properties from original feature
-          geometry: {
-            coordinates: feature.geometry.coordinates[0],
-            type: 'LineString'
-          },
-          properties: {
-            ...feature.properties,
-            type: 'wall'
-          }
-        };
-
-        // Buffer the line to create a polygon with actual width
-        let wallFeature = buffer(perimeterLine, 0.0000003, { units: 'degrees' });
-        wallFeature ? wallFeatures.push(wallFeature) : console.log('wall not built, something went wrong!')
-
-      }
-      const floorFeatureCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon> = { type: 'FeatureCollection', features: floorFeatures }
-      const wallFeatureCollection: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: wallFeatures }
-
-      setFloormapCollection(floormapCollection)
-      setfloorCollection(floorFeatureCollection)
-      setWallCollection(wallFeatureCollection)
-      setWalkwayCollection(walkwayCollection)
-
-    }
-    processFeatures()
-  }, []);
-
-  return (
-    <Map
-      interactiveLayerIds={['floormap-extrusion']}
-      onClick={(e) => handleFloormapClick(e)}
-      initialViewState={{ longitude: -79.35934795, latitude: 43.81288656, zoom: 19.3, bearing: 74.5, }}
-      style={{ position: 'relative', width: '100%', height: '100%' }}
-      mapStyle={{
-        "name": "marketmap",
-        "version": 8,
-
-        sources: {
-          'raster-tiles': {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            minzoom: 0,
-            maxzoom: 19
-          }
-        },
-        layers: [
-          {
-            id: 'simple-tiles',
-            type: 'raster',
-            source: 'raster-tiles'
-          }
-        ]
-      }}>
-
-      {floormapCollection && (
-        <Source id="floor" type="geojson" data={floormapCollection}>
-          <Layer
-            id="floormap-extrusion"
-            type="fill-extrusion"
-            paint={{
-              'fill-extrusion-color': '#f5f5dc', // Light beige
-              // Set floor height
-              'fill-extrusion-height': 1,
-              // Start at base level
-              'fill-extrusion-base': 0,
-              'fill-extrusion-opacity': 1,
-              'fill-extrusion-vertical-gradient': true
-            }} />
-        </Source>
-      )}
-      {
-        floorCollection && (
-          <Source id="floor" type="geojson" data={floorCollection}>
-            <Layer
-              id="floor-extrusion"
-              type="fill-extrusion"
-              paint={{
-                'fill-extrusion-color': '#f5f5dc', // Light beige
-                // Set floor height
-                'fill-extrusion-height': 1,
-                // Start at base level
-                'fill-extrusion-base': 1,
-                // Add slight opacity
-                'fill-extrusion-opacity': 1,
-                'fill-extrusion-vertical-gradient': true
-              }} />
-          </Source>
-        )
-      }
-      {
-        wallCollection && (
-          <Source id="wall" type="geojson" data={wallCollection}>
-            <Layer
-              id='wall-3d-extrusion'
-              type="fill-extrusion"
-              paint={{
-                'fill-extrusion-color': '#dddddd', // Light gray for walls
-                'fill-extrusion-height': 2, // Wall height (taller than floors)
-                'fill-extrusion-base': 1, // Start from floor height
-                'fill-extrusion-opacity': 1,
-                'fill-extrusion-vertical-gradient': true
-              }} />
-          </Source>
-        )
-      }
-      {
-        path && (
-          <Source id='path' type='geojson' data={path}>
-            <Layer
-              id='path-layer'
-              type='line'
-              paint={{ 'line-color': 'green', 'line-width': 4 }} />
-          </Source>
-        )
-      }
-      {
-        doorPointCollection && (
-          <Source id='door' type='geojson' data={doorPointCollection}>
-            <Layer
-              id='door-layer'
-              type='circle' />
-          </Source>
-        )
-      }
-
-      {
-        showPopup && (
-          <Popup longitude={popupCoord.lng} latitude={popupCoord.lat} onClose={() => setShowPopup(false)} >
-            <button type='button' onClick={() => {
-              setStart({ lng: popupCoord.lng, lat: popupCoord.lat })
-              setShowPopup(false)
-            }}>Im here</button>
-            <button type='button' onClick={() => {
-              setFinish({ lng: popupCoord.lng, lat: popupCoord.lat })
-              setShowPopup(false)
-            }}>Get here</button>
-          </Popup>
-        )
-      }
-      <Marker onDragEnd={(e) => handleDragEnd(e, 'start')} color="green" longitude={start.lng} latitude={start.lat} anchor="center" draggable={true} >
-        <img style={{ height: '2rem' }} src="./start.png" />
-      </Marker>
-      <Marker onDragEnd={(e) => handleDragEnd(e, 'finish')} color="red" longitude={finish.lng} latitude={finish.lat} anchor="bottom" draggable={true} >
-      </Marker>
-      <NavigationControl />
-    </Map >
-  );
+			{showPopup && popupCoord && (
+				<Popup
+					longitude={popupCoord.lng}
+					latitude={popupCoord.lat}
+					onClose={() => setShowPopup(false)}
+				>
+					<button
+						type="button"
+						onClick={() => {
+							setStart({ lng: popupCoord.lng, lat: popupCoord.lat });
+							setShowPopup(false);
+						}}
+					>
+						Im here
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							setFinish({ lng: popupCoord.lng, lat: popupCoord.lat });
+							setShowPopup(false);
+						}}
+					>
+						Get here
+					</button>
+				</Popup>
+			)}
+			<Marker
+				onDragEnd={(e) => handleDragEnd(e, "start")}
+				color="green"
+				longitude={start.lng}
+				latitude={start.lat}
+				anchor="center"
+				draggable={true}
+			>
+				<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
+			</Marker>
+			<Marker
+				onDragEnd={(e) => handleDragEnd(e, "finish")}
+				color="red"
+				longitude={finish.lng}
+				latitude={finish.lat}
+				anchor="bottom"
+				draggable={true}
+			></Marker>
+			<NavigationControl />
+		</M>
+	);
 }
 
 export default App;
