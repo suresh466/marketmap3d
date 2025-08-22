@@ -1,11 +1,15 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
+
 import "./App.css";
 
+import type { Map as MapLibreMap } from "maplibre-gl";
 import type {
+	IControl,
 	LngLat,
 	MapLayerMouseEvent,
 	MarkerDragEvent,
 } from "react-map-gl/maplibre";
+
 import {
 	Layer,
 	Map as M,
@@ -13,6 +17,7 @@ import {
 	NavigationControl,
 	Popup,
 	Source,
+	useControl,
 } from "react-map-gl/maplibre";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -25,6 +30,38 @@ import {
 } from "@turf/turf";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import { useEffect, useState } from "react";
+
+class ButtonControl implements IControl {
+	#container: HTMLDivElement | undefined;
+	#map: MapLibreMap | undefined;
+
+	onAdd(map: MapLibreMap): HTMLElement {
+		this.#map = map;
+		this.#container = document.createElement("div");
+		this.#container.className = "maplibregl-ctrl";
+
+		const button = document.createElement("button");
+		button.className = "maplibregl-ctrl-icon";
+		button.innerHTML = "👆";
+		button.onclick = () => {
+			console.log("Button clicked!");
+			// Add your button logic here
+		};
+
+		this.#container.appendChild(button);
+		return this.#container;
+	}
+
+	onRemove() {
+		this.#container?.parentNode?.removeChild(this.#container);
+		this.#map = undefined;
+	}
+}
+
+function FitControl() {
+	useControl(() => new ButtonControl(), { position: "top-left" });
+	return null;
+}
 
 function App() {
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
@@ -306,6 +343,7 @@ function App() {
 				draggable={true}
 			></Marker>
 			<NavigationControl />
+			<FitControl />
 		</M>
 	);
 }
