@@ -2,7 +2,7 @@
 
 import "./App.css";
 
-import type { Map as MapLibreMap } from "maplibre-gl";
+import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
 import type {
 	IControl,
 	LngLat,
@@ -31,21 +31,23 @@ import {
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import { useEffect, useState } from "react";
 
-class ButtonControl implements IControl {
+class _FitToViewControl implements IControl {
 	#container: HTMLDivElement | undefined;
-	#map: MapLibreMap | undefined;
 
 	onAdd(map: MapLibreMap): HTMLElement {
-		this.#map = map;
 		this.#container = document.createElement("div");
 		this.#container.className = "maplibregl-ctrl";
+		this.#container.style.paddingBottom = "8rem";
 
 		const button = document.createElement("button");
 		button.className = "maplibregl-ctrl-icon";
 		button.innerHTML = "👆";
 		button.onclick = () => {
-			console.log("Button clicked!");
-			// Add your button logic here
+			const bounds: LngLatBoundsLike = [
+				[-79.36003227, 43.81250021],
+				[-79.3585528, 43.813410058],
+			];
+			map.fitBounds(bounds);
 		};
 
 		this.#container.appendChild(button);
@@ -54,12 +56,11 @@ class ButtonControl implements IControl {
 
 	onRemove() {
 		this.#container?.parentNode?.removeChild(this.#container);
-		this.#map = undefined;
 	}
 }
 
-function FitControl() {
-	useControl(() => new ButtonControl(), { position: "top-left" });
+function FitToViewControl() {
+	useControl(() => new _FitToViewControl(), { position: "bottom-right" });
 	return null;
 }
 
@@ -77,12 +78,12 @@ function App() {
 	const [walkwayCollection, setWalkwayCollection] =
 		useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(null);
 	const [start, setStart] = useState({
-		lng: -79.35988895104677,
-		lat: 43.812871320851855,
+		lng: -79.35914121022692,
+		lat: 43.81261407787761,
 	});
 	const [finish, setFinish] = useState({
-		lng: -79.35984380982431,
-		lat: 43.81274916336028,
+		lng: -79.35974282681403,
+		lat: 43.812829177963664,
 	});
 	const [path, setPath] = useState(null);
 
@@ -222,10 +223,10 @@ function App() {
 			interactiveLayerIds={["floormap-extrusion"]}
 			onClick={(e) => handleFloormapClick(e)}
 			initialViewState={{
-				longitude: -79.35934795,
-				latitude: 43.81288656,
-				zoom: 19.3,
-				bearing: 74.5,
+				longitude: -79.35929253500002,
+				latitude: 43.81295513573272,
+				zoom: 17.5,
+				// bearing: 74.5,
 			}}
 			style={{ position: "relative", width: "100%", height: "100%" }}
 			mapStyle={{
@@ -343,7 +344,7 @@ function App() {
 				draggable={true}
 			></Marker>
 			<NavigationControl />
-			<FitControl />
+			<FitToViewControl />
 		</M>
 	);
 }
