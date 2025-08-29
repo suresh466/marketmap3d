@@ -3,6 +3,7 @@
 import "./App.css";
 
 import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
+import { LngLatBounds } from "maplibre-gl";
 import type {
 	IControl,
 	LngLat,
@@ -66,7 +67,6 @@ function FitToViewControl() {
 
 function App() {
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
-	const [showPopup, setShowPopup] = useState<boolean>(false);
 	const [doorPointCollection, setDoorPointCollection] =
 		useState<GeoJSON.FeatureCollection<GeoJSON.Point> | null>(null);
 	const [floorplan, setFloorplan] =
@@ -89,8 +89,15 @@ function App() {
 
 	function handleFloormapClick(e: MapLayerMouseEvent) {
 		if (e.features) {
-			setPopupCoord(e.lngLat);
-			setShowPopup(true);
+			const bounds = new LngLatBounds([
+				[-79.36003227, 43.81250021],
+				[-79.3585528, 43.813410058],
+			]);
+
+			const isInside = bounds.contains(e.lngLat);
+			if (isInside) {
+				setPopupCoord(e.lngLat);
+			}
 		}
 	}
 
@@ -298,18 +305,17 @@ function App() {
 					<Layer id="door-layer" type="circle" />
 				</Source>
 			)}
-
-			{showPopup && popupCoord && (
+			{popupCoord && (
 				<Popup
 					longitude={popupCoord.lng}
 					latitude={popupCoord.lat}
-					onClose={() => setShowPopup(false)}
+					onClose={() => setPopupCoord(undefined)}
 				>
 					<button
 						type="button"
 						onClick={() => {
 							setStart({ lng: popupCoord.lng, lat: popupCoord.lat });
-							setShowPopup(false);
+							setPopupCoord(undefined);
 						}}
 					>
 						Im here
@@ -318,7 +324,7 @@ function App() {
 						type="button"
 						onClick={() => {
 							setFinish({ lng: popupCoord.lng, lat: popupCoord.lat });
-							setShowPopup(false);
+							setPopupCoord(undefined);
 						}}
 					>
 						Get here
