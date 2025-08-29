@@ -38,7 +38,7 @@ class _FitToViewControl implements IControl {
 	onAdd(map: MapLibreMap): HTMLElement {
 		this.#container = document.createElement("div");
 		this.#container.className = "maplibregl-ctrl";
-		this.#container.style.paddingBottom = "8rem";
+		this.#container.style.marginBottom = "8rem";
 
 		const button = document.createElement("button");
 		button.className = "maplibregl-ctrl-icon";
@@ -56,7 +56,7 @@ class _FitToViewControl implements IControl {
 	}
 
 	onRemove() {
-		this.#container?.parentNode?.removeChild(this.#container);
+		this.#container?.remove();
 	}
 }
 
@@ -349,7 +349,10 @@ function App() {
 				anchor="bottom"
 				draggable={true}
 			></Marker>
-			<NavigationControl />
+			<NavigationControl
+				position="bottom-left"
+				style={{ marginBottom: "8rem" }}
+			></NavigationControl>
 			<FitToViewControl />
 		</M>
 	);
