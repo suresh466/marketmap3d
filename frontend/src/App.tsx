@@ -38,7 +38,7 @@ import type {
 	Polygon,
 } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 class _FitToViewControl implements IControl {
 	#container: HTMLDivElement | undefined;
@@ -68,55 +68,119 @@ class _FitToViewControl implements IControl {
 	}
 }
 
-function SearchBox({ booths }: { booths: FeatureCollection<Polygon> }) {
-	const [filteredBooths, setFilteredBooths] = useState<Feature<Polygon>[]>(
-		booths.features,
-	);
+function SearchBox({
+	booths,
+	onDestSelect,
+}: {
+	booths: FeatureCollection<Polygon>;
+	onDestSelect: (coords: { lng: number; lat: number }) => void;
+}) {
+	const [filteredBooths, setFilteredBooths] = useState<
+		Feature<Polygon>[] | null
+	>(booths.features);
 	const [searchTerm, setSearchTerm] = useState<string | null>(null);
+	const [focusedSearchbox, setFocusedSearchbox] = useState<string | null>(null);
+	const originSearchboxRef = useRef<HTMLInputElement | null>(null);
+	const destSearchboxRef = useRef<HTMLInputElement | null>(null);
 
 	useEffect(() => {
-		if (!searchTerm) return;
+		if (!focusedSearchbox) return;
+
+		if (focusedSearchbox === "origin") {
+			originSearchboxRef.current?.focus();
+			setSearchTerm(originSearchboxRef.current?.value || "");
+		}
+		if (focusedSearchbox === "dest") {
+			destSearchboxRef.current?.focus();
+			setSearchTerm(destSearchboxRef.current?.value || "");
+		}
+	}, [focusedSearchbox]);
+
+	useEffect(() => {
+		if (searchTerm === null) return;
 
 		const timeoutId = setTimeout(() => {
 			const filteredBooths = booths.features.filter((booth) =>
 				booth.properties?.label?.toLowerCase().includes(searchTerm),
 			);
 			setFilteredBooths(filteredBooths);
-		}, 500);
+		}, 100);
 		return () => clearTimeout(timeoutId);
 	}, [searchTerm, booths]);
 
 	return (
 		<>
-			<input
-				id="boothsSearch"
-				className="maplibregl-ctrl"
-				style={{
-					padding: "1rem",
-					borderRadius: "0.5rem",
-					width: "100%",
-					boxSizing: "border-box",
-				}}
-				placeholder="Search Booth Number"
-				onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
-			/>
-			<ul
-				style={{
-					listStyle: "none",
-					padding: 0,
-					width: "100%",
-					color: "black",
-				}}
-			>
-				{filteredBooths.map((booth) => {
-					if (!booth.properties?.label) return null;
-					return (
-						<li style={{ padding: "1rem" }} key={booth.properties.id}>
-							{booth.properties.label}
-						</li>
-					);
-				})}
-			</ul>
+			{focusedSearchbox === null ? (
+				// dummy searchbox
+				<input
+					id="boothsSearchDummy"
+					className="maplibregl-ctrl"
+					style={{
+						padding: "1rem",
+						borderRadius: "0.5rem",
+						width: "100%",
+						boxSizing: "border-box",
+					}}
+					placeholder="Search Booth Number"
+					onFocus={() => {
+						if (focusedSearchbox !== "origin") setFocusedSearchbox("origin");
+					}}
+				/>
+			) : (
+				<>
+					{/* origin searchbox */}
+					<input
+						ref={originSearchboxRef}
+						id="boothsSearch"
+						className="maplibregl-ctrl"
+						style={{
+							padding: "1rem",
+							borderRadius: "0.5rem",
+							width: "100%",
+							boxSizing: "border-box",
+						}}
+						placeholder="Search Booth Number"
+						onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+						onFocus={() => {
+							if (focusedSearchbox !== "origin") setFocusedSearchbox("origin");
+						}}
+					/>
+					{/* dest searchbox */}
+					<input
+						ref={destSearchboxRef}
+						id="destBoothsSearch"
+						className="maplibregl-ctrl"
+						style={{
+							padding: "1rem",
+							borderRadius: "0.5rem",
+							width: "100%",
+							boxSizing: "border-box",
+						}}
+						placeholder="Search Destination Booth Number"
+						onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+						onFocus={() => {
+							if (focusedSearchbox !== "dest") setFocusedSearchbox("dest");
+						}}
+					/>
+					<ul
+						style={{
+							listStyle: "none",
+							padding: 0,
+							width: "100%",
+							color: "black",
+						}}
+					>
+						{filteredBooths?.map((booth) => {
+							if (!booth.properties?.label) return null;
+							return (
+								<li style={{ padding: "1rem" }} key={booth.properties.id}>
+									{booth.properties.label}
+								</li>
+							);
+						})}
+					</ul>
+				</>
+			)}
 		</>
 	);
 }
@@ -140,15 +204,19 @@ function App() {
 	> | null>(null);
 	const [walkwayCollection, setWalkwayCollection] =
 		useState<FeatureCollection<LineString> | null>(null);
-	const [start, setStart] = useState({
+	const [origin, setOrigin] = useState<{ lng: number; lat: number }>({
 		lng: -79.35914121022692,
 		lat: 43.81261407787761,
 	});
-	const [finish, setFinish] = useState({
+	const [dest, setDest] = useState<{ lng: number; lat: number }>({
 		lng: -79.35974282681403,
 		lat: 43.812829177963664,
 	});
 	const [path, setPath] = useState(null);
+
+	function handleDestSet(coords: { lng: number; lat: number }) {
+		setDest(coords);
+	}
 
 	function handleFloormapClick(e: MapLayerMouseEvent) {
 		if (e.features) {
@@ -192,7 +260,7 @@ function App() {
 			id: 1,
 			geometry: {
 				type: "Point",
-				coordinates: [start.lng, start.lat],
+				coordinates: [origin.lng, origin.lat],
 			},
 			properties: {},
 		};
@@ -202,7 +270,7 @@ function App() {
 			id: 2,
 			geometry: {
 				type: "Point",
-				coordinates: [finish.lng, finish.lat],
+				coordinates: [dest.lng, dest.lat],
 			},
 			properties: {},
 		};
@@ -214,14 +282,14 @@ function App() {
 		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
 		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
 		setPath(pathToGeoJSON(path));
-	}, [start, finish, walkwayCollection]);
+	}, [origin, dest, walkwayCollection]);
 
 	function handleDragEnd(e: MarkerDragEvent, which: string) {
 		if (which === "start") {
-			setStart(e.lngLat);
+			setOrigin(e.lngLat);
 		}
 		if (which === "finish") {
-			setFinish(e.lngLat);
+			setDest(e.lngLat);
 		}
 	}
 
@@ -383,7 +451,7 @@ function App() {
 							<button
 								type="button"
 								onClick={() => {
-									setStart({ lng: popupCoord.lng, lat: popupCoord.lat });
+									setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
 									setPopupCoord(undefined);
 								}}
 							>
@@ -392,7 +460,7 @@ function App() {
 							<button
 								type="button"
 								onClick={() => {
-									setFinish({ lng: popupCoord.lng, lat: popupCoord.lat });
+									setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
 									setPopupCoord(undefined);
 								}}
 							>
@@ -403,8 +471,8 @@ function App() {
 					<Marker
 						onDragEnd={(e) => handleDragEnd(e, "start")}
 						color="green"
-						longitude={start.lng}
-						latitude={start.lat}
+						longitude={origin.lng}
+						latitude={origin.lat}
 						anchor="center"
 						draggable={true}
 					>
@@ -413,8 +481,8 @@ function App() {
 					<Marker
 						onDragEnd={(e) => handleDragEnd(e, "finish")}
 						color="red"
-						longitude={finish.lng}
-						latitude={finish.lat}
+						longitude={dest.lng}
+						latitude={dest.lat}
 						anchor="bottom"
 						draggable={true}
 					></Marker>
@@ -437,7 +505,9 @@ function App() {
 					borderRadius: "0.5rem",
 				}}
 			>
-				{boothCollection && <SearchBox booths={boothCollection} />}
+				{boothCollection && (
+					<SearchBox booths={boothCollection} onDestSelect={handleDestSet} />
+				)}
 			</div>
 		</div>
 	);
