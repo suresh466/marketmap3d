@@ -2,32 +2,13 @@
 
 import "./App.css";
 
-import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
-import { LngLatBounds } from "maplibre-gl";
-import type {
-	IControl,
-	LngLat,
-	MapLayerMouseEvent,
-	MarkerDragEvent,
-} from "react-map-gl/maplibre";
-
-import {
-	Layer,
-	Map as M,
-	Marker,
-	NavigationControl,
-	Popup,
-	Source,
-	useControl,
-} from "react-map-gl/maplibre";
-
-import "maplibre-gl/dist/maplibre-gl.css";
 import {
 	booleanPointInPolygon,
 	buffer,
 	explode,
+	featureCollection,
 	nearestPoint,
-	points,
+	point,
 } from "@turf/turf";
 import type {
 	Feature,
@@ -38,7 +19,25 @@ import type {
 	Polygon,
 } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
+import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
+import { LngLatBounds } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
+import type {
+	IControl,
+	LngLat,
+	MapLayerMouseEvent,
+	MarkerDragEvent,
+} from "react-map-gl/maplibre";
+import {
+	Layer,
+	Map as M,
+	Marker,
+	NavigationControl,
+	Popup,
+	Source,
+	useControl,
+} from "react-map-gl/maplibre";
 
 class _FitToViewControl implements IControl {
 	#container: HTMLDivElement | undefined;
@@ -70,15 +69,18 @@ class _FitToViewControl implements IControl {
 
 function SearchBox({
 	booths,
-	onDestSelect,
+	onBoothSelect,
+	doors,
 }: {
 	booths: FeatureCollection<Polygon>;
-	onDestSelect: (coords: { lng: number; lat: number }) => void;
+	onBoothSelect: (coords: { lng: number; lat: number }, which: string) => void;
+	doors: FeatureCollection<Point>;
 }) {
 	const [filteredBooths, setFilteredBooths] = useState<
 		Feature<Polygon>[] | null
 	>(booths.features);
-	const [searchTerm, setSearchTerm] = useState<string | null>(null);
+	const [originSearchTerm, setOriginSearchTerm] = useState<string | null>(null);
+	const [destSearchTerm, setDestSearchTerm] = useState<string | null>(null);
 	const [focusedSearchbox, setFocusedSearchbox] = useState<string | null>(null);
 	const originSearchboxRef = useRef<HTMLInputElement | null>(null);
 	const destSearchboxRef = useRef<HTMLInputElement | null>(null);
@@ -88,31 +90,38 @@ function SearchBox({
 
 		if (focusedSearchbox === "origin") {
 			originSearchboxRef.current?.focus();
-			setSearchTerm(originSearchboxRef.current?.value || "");
 		}
 		if (focusedSearchbox === "dest") {
 			destSearchboxRef.current?.focus();
-			setSearchTerm(destSearchboxRef.current?.value || "");
 		}
 	}, [focusedSearchbox]);
 
 	useEffect(() => {
-		if (searchTerm === null) return;
-
+		// don't filter the booths before initial search
+		if (originSearchTerm === null && destSearchTerm === null) {
+			return;
+		}
 		const timeoutId = setTimeout(() => {
+			const searchTerm =
+				focusedSearchbox === "origin"
+					? originSearchTerm || ""
+					: destSearchTerm || "";
+
 			const filteredBooths = booths.features.filter((booth) =>
 				booth.properties?.label?.toLowerCase().includes(searchTerm),
 			);
 			setFilteredBooths(filteredBooths);
 		}, 100);
 		return () => clearTimeout(timeoutId);
-	}, [searchTerm, booths]);
+	}, [focusedSearchbox, originSearchTerm, destSearchTerm, booths]);
 
 	return (
 		<>
 			{focusedSearchbox === null ? (
 				// dummy searchbox
 				<input
+					readOnly
+					value={destSearchTerm || ""}
 					id="boothsSearchDummy"
 					className="maplibregl-ctrl"
 					style={{
@@ -121,7 +130,7 @@ function SearchBox({
 						width: "100%",
 						boxSizing: "border-box",
 					}}
-					placeholder="Search Booth Number"
+					placeholder="Search For a Booth"
 					onFocus={() => {
 						if (focusedSearchbox !== "origin") setFocusedSearchbox("origin");
 					}}
@@ -130,6 +139,7 @@ function SearchBox({
 				<>
 					{/* origin searchbox */}
 					<input
+						value={originSearchTerm || ""}
 						ref={originSearchboxRef}
 						id="boothsSearch"
 						className="maplibregl-ctrl"
@@ -139,14 +149,17 @@ function SearchBox({
 							width: "100%",
 							boxSizing: "border-box",
 						}}
-						placeholder="Search Booth Number"
-						onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+						placeholder="Search Origin Booth"
+						onChange={(e) => setOriginSearchTerm(e.target.value.toLowerCase())}
 						onFocus={() => {
-							if (focusedSearchbox !== "origin") setFocusedSearchbox("origin");
+							if (focusedSearchbox !== "origin") {
+								setFocusedSearchbox("origin");
+							}
 						}}
 					/>
 					{/* dest searchbox */}
 					<input
+						value={destSearchTerm || ""}
 						ref={destSearchboxRef}
 						id="destBoothsSearch"
 						className="maplibregl-ctrl"
@@ -156,8 +169,8 @@ function SearchBox({
 							width: "100%",
 							boxSizing: "border-box",
 						}}
-						placeholder="Search Destination Booth Number"
-						onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+						placeholder="Search Destination Booth"
+						onChange={(e) => setDestSearchTerm(e.target.value.toLowerCase())}
 						onFocus={() => {
 							if (focusedSearchbox !== "dest") setFocusedSearchbox("dest");
 						}}
@@ -174,7 +187,35 @@ function SearchBox({
 							if (!booth.properties?.label) return null;
 							return (
 								<li style={{ padding: "1rem" }} key={booth.properties.id}>
-									{booth.properties.label}
+									<button
+										type="button"
+										onClick={() => {
+											for (const door of doors.features) {
+												if (door.properties?.id === booth.properties?.id) {
+													const coords = {
+														lng: door.geometry.coordinates[0],
+														lat: door.geometry.coordinates[1],
+													};
+													onBoothSelect(coords, focusedSearchbox);
+													focusedSearchbox === "origin"
+														? setOriginSearchTerm(booth.properties?.label)
+														: setDestSearchTerm(booth.properties?.label);
+
+													if (focusedSearchbox === "origin") {
+														setOriginSearchTerm(booth.properties?.label);
+														setFocusedSearchbox("dest");
+													}
+													if (focusedSearchbox === "dest") {
+														setDestSearchTerm(booth.properties?.label);
+														setFocusedSearchbox(null);
+													}
+													break;
+												}
+											}
+										}}
+									>
+										{booth.properties.label}
+									</button>
 								</li>
 							);
 						})}
@@ -214,8 +255,11 @@ function App() {
 	});
 	const [path, setPath] = useState(null);
 
-	function handleDestSet(coords: { lng: number; lat: number }) {
-		setDest(coords);
+	function handleBoothSelect(
+		coords: { lng: number; lat: number },
+		which: string,
+	) {
+		which === "origin" ? setOrigin(coords) : setDest(coords);
 	}
 
 	function handleFloormapClick(e: MapLayerMouseEvent) {
@@ -239,16 +283,20 @@ function App() {
 			.map((booth) => buffer(booth, 0.0000001))
 			.filter((booth): booth is Feature<Polygon> => Boolean(booth));
 
-		const doorCoordinates: number[][] = [];
+		const doorFeatures: Feature<Point>[] = [];
 		for (const booth of bufferedBooths) {
-			for (const point of walkwayPoints.features) {
-				if (booleanPointInPolygon(point, booth)) {
-					doorCoordinates.push(point.geometry.coordinates);
+			for (const walkwayPoint of walkwayPoints.features) {
+				if (booleanPointInPolygon(walkwayPoint, booth)) {
+					doorFeatures.push(
+						point(walkwayPoint.geometry.coordinates, {
+							id: booth.properties?.id || null,
+						}),
+					);
 					break;
 				}
 			}
 		}
-		const doorPointCollection = points(doorCoordinates, { isdoor: true });
+		const doorPointCollection = featureCollection(doorFeatures);
 		setDoorPointCollection(doorPointCollection);
 	}, [floorplan, walkwayCollection]);
 
@@ -281,7 +329,7 @@ function App() {
 
 		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
 		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
-		setPath(pathToGeoJSON(path));
+		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
 	}, [origin, dest, walkwayCollection]);
 
 	function handleDragEnd(e: MarkerDragEvent, which: string) {
@@ -505,8 +553,12 @@ function App() {
 					borderRadius: "0.5rem",
 				}}
 			>
-				{boothCollection && (
-					<SearchBox booths={boothCollection} onDestSelect={handleDestSet} />
+				{boothCollection && doorPointCollection && (
+					<SearchBox
+						booths={boothCollection}
+						onBoothSelect={handleBoothSelect}
+						doors={doorPointCollection}
+					/>
 				)}
 			</div>
 		</div>
