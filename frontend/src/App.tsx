@@ -431,6 +431,7 @@ function App() {
 						height: "100%",
 					}}
 					mapStyle={{
+						glyphs: "/fonts/{fontstack}/{range}.pbf",
 						name: "marketmap",
 						version: 8,
 
@@ -468,6 +469,21 @@ function App() {
 									"fill-extrusion-vertical-gradient": true,
 								}}
 							/>
+							<Layer
+								id="booth-label"
+								type="symbol"
+								layout={{
+									"text-field": ["get", "label"],
+									"text-font": ["Open-Sans-Regular"],
+									"text-size": 14,
+									"text-anchor": "center",
+								}}
+								paint={{
+									"text-color": "#000000",
+									"text-halo-color": "#ffffff",
+									"text-halo-width": 1,
+								}}
+							/>
 						</Source>
 					)}
 					{wallCollection && (
@@ -494,7 +510,7 @@ function App() {
 							/>
 						</Source>
 					)}
-					{doorPointCollection && (
+					{doorPointCollection && null && (
 						<Source id="door" type="geojson" data={doorPointCollection}>
 							<Layer id="door-layer" type="circle" />
 						</Source>
