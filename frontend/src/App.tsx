@@ -132,7 +132,12 @@ function SearchBox({
 					}}
 					placeholder="Search For a Booth"
 					onFocus={() => {
-						if (focusedSearchbox !== "origin") setFocusedSearchbox("origin");
+						console.log("originsearch term", originSearchTerm);
+						if (originSearchTerm === null || originSearchTerm === "") {
+							setFocusedSearchbox("origin");
+						} else {
+							setFocusedSearchbox("dest");
+						}
 					}}
 				/>
 			) : (
@@ -197,17 +202,21 @@ function SearchBox({
 														lat: door.geometry.coordinates[1],
 													};
 													onBoothSelect(coords, focusedSearchbox);
-													focusedSearchbox === "origin"
-														? setOriginSearchTerm(booth.properties?.label)
-														: setDestSearchTerm(booth.properties?.label);
 
 													if (focusedSearchbox === "origin") {
-														setOriginSearchTerm(booth.properties?.label);
-														setFocusedSearchbox("dest");
-													}
-													if (focusedSearchbox === "dest") {
-														setDestSearchTerm(booth.properties?.label);
-														setFocusedSearchbox(null);
+														setOriginSearchTerm(
+															booth.properties?.label || "NO-Number",
+														);
+														if (destSearchTerm) {
+															setFocusedSearchbox(null);
+														} else setFocusedSearchbox("dest");
+													} else {
+														setDestSearchTerm(
+															booth.properties?.label || "No-Number",
+														);
+														if (originSearchTerm) {
+															setFocusedSearchbox(null);
+														} else setFocusedSearchbox("origin");
 													}
 													break;
 												}
