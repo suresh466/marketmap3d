@@ -425,33 +425,16 @@ function App() {
 						zoom: 17.5,
 						// bearing: 74.5,
 					}}
+					maxBounds={[
+						[-79.364172095, 43.81073395],
+						[-79.354266405, 43.814891107],
+					]}
 					style={{
 						position: "relative",
 						width: "100%",
 						height: "100%",
 					}}
-					mapStyle={{
-						glyphs: "/fonts/{fontstack}/{range}.pbf",
-						name: "marketmap",
-						version: 8,
-
-						sources: {
-							"raster-tiles": {
-								type: "raster",
-								tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-								tileSize: 256,
-								minzoom: 0,
-								maxzoom: 19,
-							},
-						},
-						layers: [
-							{
-								id: "simple-tiles",
-								type: "raster",
-								source: "raster-tiles",
-							},
-						],
-					}}
+					mapStyle="https://tiles.openfreemap.org/styles/bright"
 				>
 					{boothCollection && (
 						<Source id="floor" type="geojson" data={boothCollection}>
@@ -459,11 +442,11 @@ function App() {
 								id="floor-extrusion"
 								type="fill-extrusion"
 								paint={{
-									"fill-extrusion-color": "#f5f5dc", // Light beige
+									"fill-extrusion-color": "#FFFFE0", // Light beige
 									// Set floor height
-									"fill-extrusion-height": 1,
+									"fill-extrusion-height": 2,
 									// Start at base level
-									"fill-extrusion-base": 1,
+									"fill-extrusion-base": 0,
 									// Add slight opacity
 									"fill-extrusion-opacity": 1,
 									"fill-extrusion-vertical-gradient": true,
@@ -474,7 +457,7 @@ function App() {
 								type="symbol"
 								layout={{
 									"text-field": ["get", "label"],
-									"text-font": ["Open-Sans-Regular"],
+									"text-font": ["Noto Sans Regular"],
 									"text-size": 14,
 									"text-anchor": "center",
 								}}
@@ -494,7 +477,7 @@ function App() {
 								paint={{
 									"fill-extrusion-color": "#dddddd", // Light gray for walls
 									"fill-extrusion-height": 2, // Wall height (taller than floors)
-									"fill-extrusion-base": 1, // Start from floor height
+									"fill-extrusion-base": 0, // Start from floor height
 									"fill-extrusion-opacity": 1,
 									"fill-extrusion-vertical-gradient": true,
 								}}
