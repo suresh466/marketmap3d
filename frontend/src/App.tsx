@@ -241,6 +241,7 @@ function FitToViewControl() {
 }
 
 function App() {
+	const [isDragging, setIsDragging] = useState(false);
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
 	const [doorPointCollection, setDoorPointCollection] =
 		useState<FeatureCollection<Point> | null>(null);
@@ -341,6 +342,10 @@ function App() {
 		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
 	}, [origin, dest, walkwayCollection]);
 
+	function handleDragStart() {
+		setIsDragging(true);
+	}
+
 	function handleDragEnd(e: MarkerDragEvent, which: string) {
 		if (which === "start") {
 			setOrigin(e.lngLat);
@@ -348,6 +353,7 @@ function App() {
 		if (which === "finish") {
 			setDest(e.lngLat);
 		}
+		setIsDragging(false);
 	}
 
 	useEffect(() => {
@@ -406,6 +412,36 @@ function App() {
 		processFeatures();
 	}, []);
 
+	function useTravelingPulse() {
+		const [pulsePosition, setPulsePosition] = useState(0);
+		const rafRef = useRef<number | null>(null);
+
+		useEffect(() => {
+			if (isDragging) return;
+			let frame = 0;
+
+			const animate = () => {
+				console.log(isDragging);
+				frame += 0.01; // Speed of travel (lower = slower)
+				const position = frame % 1; // position always between 0 and 1
+				setPulsePosition(position);
+				rafRef.current = requestAnimationFrame(animate);
+			};
+
+			rafRef.current = requestAnimationFrame(animate);
+
+			return () => {
+				if (rafRef.current) {
+					cancelAnimationFrame(rafRef.current);
+				}
+			};
+		}, [isDragging]);
+
+		return pulsePosition;
+	}
+
+	const pulsePosition = useTravelingPulse();
+
 	return (
 		<div style={{ position: "relative", width: "100%", height: "100%" }}>
 			<div
@@ -422,7 +458,7 @@ function App() {
 					initialViewState={{
 						longitude: -79.35929253500002,
 						latitude: 43.81295513573272,
-						zoom: 17.5,
+						zoom: 18,
 						// bearing: 74.5,
 					}}
 					maxBounds={[
@@ -485,11 +521,25 @@ function App() {
 						</Source>
 					)}
 					{path && (
-						<Source id="path" type="geojson" data={path}>
+						<Source id="path" type="geojson" data={path} lineMetrics={true}>
 							<Layer
+								layout={{ "line-join": "bevel" }}
 								id="path-layer"
 								type="line"
-								paint={{ "line-color": "green", "line-width": 4 }}
+								paint={{
+									"line-width": 4,
+									"line-gradient": [
+										"interpolate",
+										["linear"],
+										["line-progress"],
+										Math.max(0, pulsePosition - 0.1),
+										"rgba(0, 202, 0, 0.5)",
+										pulsePosition,
+										"rgba(255, 255, 0, 1)",
+										Math.min(1, pulsePosition + 0.1),
+										"rgba(0, 202, 0, 1)",
+									],
+								}}
 							/>
 						</Source>
 					)}
@@ -525,6 +575,7 @@ function App() {
 						</Popup>
 					)}
 					<Marker
+						onDragStart={handleDragStart}
 						onDragEnd={(e) => handleDragEnd(e, "start")}
 						color="green"
 						longitude={origin.lng}
@@ -535,6 +586,7 @@ function App() {
 						<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
 					</Marker>
 					<Marker
+						onDragStart={handleDragStart}
 						onDragEnd={(e) => handleDragEnd(e, "finish")}
 						color="red"
 						longitude={dest.lng}
