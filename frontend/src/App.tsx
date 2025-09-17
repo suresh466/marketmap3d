@@ -1,5 +1,16 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 
+export interface MyMapProps {
+	origin: { lng: number; lat: number };
+	dest: { lng: number; lat: number };
+	boothCollection: FeatureCollection<Polygon> | null;
+	walkwayCollection: FeatureCollection<LineString> | null;
+	wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
+	doorPointCollection: FeatureCollection<Point> | null;
+	setOrigin: React.Dispatch<React.SetStateAction<{ lng: number; lat: number }>>;
+	setDest: React.Dispatch<React.SetStateAction<{ lng: number; lat: number }>>;
+}
+
 import "./App.css";
 
 import {
@@ -132,7 +143,6 @@ function SearchBox({
 					}}
 					placeholder="Search For a Booth"
 					onFocus={() => {
-						console.log("originsearch term", originSearchTerm);
 						if (originSearchTerm === null || originSearchTerm === "") {
 							setFocusedSearchbox("origin");
 						} else {
@@ -241,15 +251,11 @@ function FitToViewControl() {
 }
 
 function App() {
-	const [isDragging, setIsDragging] = useState(false);
-	const [popupCoord, setPopupCoord] = useState<LngLat>();
-	const [doorPointCollection, setDoorPointCollection] =
-		useState<FeatureCollection<Point> | null>(null);
+	const [boothCollection, setBoothCollection] =
+		useState<FeatureCollection<Polygon> | null>(null);
 	const [floorplan, setFloorplan] = useState<FeatureCollection<Polygon> | null>(
 		null,
 	);
-	const [boothCollection, setBoothCollection] =
-		useState<FeatureCollection<Polygon> | null>(null);
 	const [wallCollection, setWallCollection] = useState<FeatureCollection<
 		Polygon | MultiPolygon
 	> | null>(null);
@@ -259,31 +265,18 @@ function App() {
 		lng: -79.35914121022692,
 		lat: 43.81261407787761,
 	});
+	const [doorPointCollection, setDoorPointCollection] =
+		useState<FeatureCollection<Point> | null>(null);
 	const [dest, setDest] = useState<{ lng: number; lat: number }>({
 		lng: -79.35974282681403,
 		lat: 43.812829177963664,
 	});
-	const [path, setPath] = useState(null);
 
 	function handleBoothSelect(
 		coords: { lng: number; lat: number },
 		which: string,
 	) {
 		which === "origin" ? setOrigin(coords) : setDest(coords);
-	}
-
-	function handleFloormapClick(e: MapLayerMouseEvent) {
-		if (e.features) {
-			const bounds = new LngLatBounds([
-				[-79.36003227, 43.81250021],
-				[-79.3585528, 43.813410058],
-			]);
-
-			const isInside = bounds.contains(e.lngLat);
-			if (isInside) {
-				setPopupCoord(e.lngLat);
-			}
-		}
 	}
 
 	useEffect(() => {
@@ -309,52 +302,6 @@ function App() {
 		const doorPointCollection = featureCollection(doorFeatures);
 		setDoorPointCollection(doorPointCollection);
 	}, [floorplan, walkwayCollection]);
-
-	useEffect(() => {
-		if (!walkwayCollection) return;
-
-		const startPoint: Feature<Point> = {
-			type: "Feature",
-			id: 1,
-			geometry: {
-				type: "Point",
-				coordinates: [origin.lng, origin.lat],
-			},
-			properties: {},
-		};
-
-		const finishPoint: Feature<Point> = {
-			type: "Feature",
-			id: 2,
-			geometry: {
-				type: "Point",
-				coordinates: [dest.lng, dest.lat],
-			},
-			properties: {},
-		};
-
-		const walkwayPoints = explode(walkwayCollection);
-		const nearestStartPoint = nearestPoint(startPoint, walkwayPoints);
-		const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints);
-
-		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
-		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
-		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
-	}, [origin, dest, walkwayCollection]);
-
-	function handleDragStart() {
-		setIsDragging(true);
-	}
-
-	function handleDragEnd(e: MarkerDragEvent, which: string) {
-		if (which === "start") {
-			setOrigin(e.lngLat);
-		}
-		if (which === "finish") {
-			setDest(e.lngLat);
-		}
-		setIsDragging(false);
-	}
 
 	useEffect(() => {
 		async function processFeatures() {
@@ -412,36 +359,6 @@ function App() {
 		processFeatures();
 	}, []);
 
-	function useTravelingPulse() {
-		const [pulsePosition, setPulsePosition] = useState(0);
-		const rafRef = useRef<number | null>(null);
-
-		useEffect(() => {
-			if (isDragging) return;
-			let frame = 0;
-
-			const animate = () => {
-				console.log(isDragging);
-				frame += 0.01; // Speed of travel (lower = slower)
-				const position = frame % 1; // position always between 0 and 1
-				setPulsePosition(position);
-				rafRef.current = requestAnimationFrame(animate);
-			};
-
-			rafRef.current = requestAnimationFrame(animate);
-
-			return () => {
-				if (rafRef.current) {
-					cancelAnimationFrame(rafRef.current);
-				}
-			};
-		}, [isDragging]);
-
-		return pulsePosition;
-	}
-
-	const pulsePosition = useTravelingPulse();
-
 	return (
 		<div style={{ position: "relative", width: "100%", height: "100%" }}>
 			<div
@@ -452,154 +369,16 @@ function App() {
 					height: "100%",
 				}}
 			>
-				<M
-					interactiveLayerIds={["floormap-extrusion"]}
-					onClick={(e) => handleFloormapClick(e)}
-					initialViewState={{
-						longitude: -79.35929253500002,
-						latitude: 43.81295513573272,
-						zoom: 18,
-						// bearing: 74.5,
-					}}
-					maxBounds={[
-						[-79.364172095, 43.81073395],
-						[-79.354266405, 43.814891107],
-					]}
-					style={{
-						position: "relative",
-						width: "100%",
-						height: "100%",
-					}}
-					mapStyle="https://tiles.openfreemap.org/styles/bright"
-				>
-					{boothCollection && (
-						<Source id="floor" type="geojson" data={boothCollection}>
-							<Layer
-								id="floor-extrusion"
-								type="fill-extrusion"
-								paint={{
-									"fill-extrusion-color": "#FFFFE0", // Light beige
-									// Set floor height
-									"fill-extrusion-height": 2,
-									// Start at base level
-									"fill-extrusion-base": 0,
-									// Add slight opacity
-									"fill-extrusion-opacity": 1,
-									"fill-extrusion-vertical-gradient": true,
-								}}
-							/>
-							<Layer
-								id="booth-label"
-								type="symbol"
-								layout={{
-									"text-field": ["get", "label"],
-									"text-font": ["Noto Sans Regular"],
-									"text-size": 14,
-									"text-anchor": "center",
-								}}
-								paint={{
-									"text-color": "#000000",
-									"text-halo-color": "#ffffff",
-									"text-halo-width": 1,
-								}}
-							/>
-						</Source>
-					)}
-					{wallCollection && (
-						<Source id="wall" type="geojson" data={wallCollection}>
-							<Layer
-								id="wall-3d-extrusion"
-								type="fill-extrusion"
-								paint={{
-									"fill-extrusion-color": "#dddddd", // Light gray for walls
-									"fill-extrusion-height": 2, // Wall height (taller than floors)
-									"fill-extrusion-base": 0, // Start from floor height
-									"fill-extrusion-opacity": 1,
-									"fill-extrusion-vertical-gradient": true,
-								}}
-							/>
-						</Source>
-					)}
-					{path && (
-						<Source id="path" type="geojson" data={path} lineMetrics={true}>
-							<Layer
-								layout={{ "line-join": "bevel" }}
-								id="path-layer"
-								type="line"
-								paint={{
-									"line-width": 4,
-									"line-gradient": [
-										"interpolate",
-										["linear"],
-										["line-progress"],
-										Math.max(0, pulsePosition - 0.1),
-										"rgba(0, 202, 0, 0.5)",
-										pulsePosition,
-										"rgba(255, 255, 0, 1)",
-										Math.min(1, pulsePosition + 0.1),
-										"rgba(0, 202, 0, 1)",
-									],
-								}}
-							/>
-						</Source>
-					)}
-					{doorPointCollection && null && (
-						<Source id="door" type="geojson" data={doorPointCollection}>
-							<Layer id="door-layer" type="circle" />
-						</Source>
-					)}
-					{popupCoord && (
-						<Popup
-							longitude={popupCoord.lng}
-							latitude={popupCoord.lat}
-							onClose={() => setPopupCoord(undefined)}
-						>
-							<button
-								type="button"
-								onClick={() => {
-									setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
-									setPopupCoord(undefined);
-								}}
-							>
-								Im here
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
-									setPopupCoord(undefined);
-								}}
-							>
-								Get here
-							</button>
-						</Popup>
-					)}
-					<Marker
-						onDragStart={handleDragStart}
-						onDragEnd={(e) => handleDragEnd(e, "start")}
-						color="green"
-						longitude={origin.lng}
-						latitude={origin.lat}
-						anchor="center"
-						draggable={true}
-					>
-						<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
-					</Marker>
-					<Marker
-						onDragStart={handleDragStart}
-						onDragEnd={(e) => handleDragEnd(e, "finish")}
-						color="red"
-						longitude={dest.lng}
-						latitude={dest.lat}
-						anchor="bottom"
-						draggable={true}
-					></Marker>
-					<NavigationControl
-						position="bottom-left"
-						style={{ marginBottom: "8rem" }}
-					></NavigationControl>
-					<FitToViewControl />
-				</M>
+				<MyMap
+					doorPointCollection={doorPointCollection}
+					boothCollection={boothCollection}
+					walkwayCollection={walkwayCollection}
+					wallCollection={wallCollection}
+					origin={origin}
+					dest={dest}
+					setOrigin={setOrigin}
+					setDest={setDest}
+				></MyMap>
 			</div>
 			<div
 				style={{
@@ -622,6 +401,255 @@ function App() {
 				)}
 			</div>
 		</div>
+	);
+}
+
+function MyMap({
+	boothCollection,
+	walkwayCollection,
+	wallCollection,
+	doorPointCollection,
+	origin,
+	dest,
+	setOrigin,
+	setDest,
+}: MyMapProps) {
+	const [isDragging, setIsDragging] = useState(false);
+	const [popupCoord, setPopupCoord] = useState<LngLat>();
+	const [path, setPath] = useState(null);
+
+	function handleFloormapClick(e: MapLayerMouseEvent) {
+		if (e.features) {
+			const bounds = new LngLatBounds([
+				[-79.36003227, 43.81250021],
+				[-79.3585528, 43.813410058],
+			]);
+
+			const isInside = bounds.contains(e.lngLat);
+			if (isInside) {
+				setPopupCoord(e.lngLat);
+			}
+		}
+	}
+
+	useEffect(() => {
+		if (!walkwayCollection) return;
+
+		const startPoint: Feature<Point> = {
+			type: "Feature",
+			id: 1,
+			geometry: {
+				type: "Point",
+				coordinates: [origin.lng, origin.lat],
+			},
+			properties: {},
+		};
+
+		const finishPoint: Feature<Point> = {
+			type: "Feature",
+			id: 2,
+			geometry: {
+				type: "Point",
+				coordinates: [dest.lng, dest.lat],
+			},
+			properties: {},
+		};
+
+		const walkwayPoints = explode(walkwayCollection);
+		const nearestStartPoint = nearestPoint(startPoint, walkwayPoints);
+		const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints);
+
+		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
+		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
+		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
+	}, [origin, dest, walkwayCollection]);
+
+	function handleDragStart() {
+		setIsDragging(true);
+	}
+
+	function handleDragEnd(e: MarkerDragEvent, which: string) {
+		if (which === "start") {
+			setOrigin(e.lngLat);
+		}
+		if (which === "finish") {
+			setDest(e.lngLat);
+		}
+		setIsDragging(false);
+	}
+
+	const [pulsePosition, setPulsePosition] = useState(0);
+	const rafRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		if (isDragging) return;
+		let frame = 0;
+
+		const animate = () => {
+			frame += 0.01; // Speed of travel (lower = slower)
+			const position = frame % 1; // position always between 0 and 1
+			setPulsePosition(position);
+			rafRef.current = requestAnimationFrame(animate);
+		};
+
+		rafRef.current = requestAnimationFrame(animate);
+
+		return () => {
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+			}
+		};
+	}, [isDragging]);
+
+	return (
+		<M
+			interactiveLayerIds={["floormap-extrusion"]}
+			onClick={(e) => handleFloormapClick(e)}
+			initialViewState={{
+				longitude: -79.35929253500002,
+				latitude: 43.81295513573272,
+				zoom: 18,
+				// bearing: 74.5,
+			}}
+			maxBounds={[
+				[-79.364172095, 43.81073395],
+				[-79.354266405, 43.814891107],
+			]}
+			style={{
+				position: "relative",
+				width: "100%",
+				height: "100%",
+			}}
+			mapStyle="https://tiles.openfreemap.org/styles/bright"
+		>
+			{boothCollection && (
+				<Source id="floor" type="geojson" data={boothCollection}>
+					<Layer
+						id="floor-extrusion"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#FFFFE0", // Light beige
+							// Set floor height
+							"fill-extrusion-height": 2,
+							// Start at base level
+							"fill-extrusion-base": 0,
+							// Add slight opacity
+							"fill-extrusion-opacity": 1,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					/>
+					<Layer
+						id="booth-label"
+						type="symbol"
+						layout={{
+							"text-field": ["get", "label"],
+							"text-font": ["Noto Sans Regular"],
+							"text-size": 14,
+							"text-anchor": "center",
+						}}
+						paint={{
+							"text-color": "#000000",
+							"text-halo-color": "#ffffff",
+							"text-halo-width": 1,
+						}}
+					/>
+				</Source>
+			)}
+			{wallCollection && (
+				<Source id="wall" type="geojson" data={wallCollection}>
+					<Layer
+						id="wall-3d-extrusion"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#dddddd", // Light gray for walls
+							"fill-extrusion-height": 2, // Wall height (taller than floors)
+							"fill-extrusion-base": 0, // Start from floor height
+							"fill-extrusion-opacity": 1,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					/>
+				</Source>
+			)}
+			{path && (
+				<Source id="path" type="geojson" data={path} lineMetrics={true}>
+					<Layer
+						layout={{ "line-join": "bevel" }}
+						id="path-layer"
+						type="line"
+						paint={{
+							"line-width": 4,
+							"line-gradient": [
+								"interpolate",
+								["linear"],
+								["line-progress"],
+								Math.max(0, pulsePosition - 0.1),
+								"rgba(0, 202, 0, 0.5)",
+								pulsePosition,
+								"rgba(255, 255, 0, 1)",
+								Math.min(1, pulsePosition + 0.1),
+								"rgba(0, 202, 0, 1)",
+							],
+						}}
+					/>
+				</Source>
+			)}
+			{doorPointCollection && null && (
+				<Source id="door" type="geojson" data={doorPointCollection}>
+					<Layer id="door-layer" type="circle" />
+				</Source>
+			)}
+			{popupCoord && (
+				<Popup
+					longitude={popupCoord.lng}
+					latitude={popupCoord.lat}
+					onClose={() => setPopupCoord(undefined)}
+				>
+					<button
+						type="button"
+						onClick={() => {
+							setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
+							setPopupCoord(undefined);
+						}}
+					>
+						Im here
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
+							setPopupCoord(undefined);
+						}}
+					>
+						Get here
+					</button>
+				</Popup>
+			)}
+			<Marker
+				onDragStart={handleDragStart}
+				onDragEnd={(e) => handleDragEnd(e, "start")}
+				color="green"
+				longitude={origin.lng}
+				latitude={origin.lat}
+				anchor="center"
+				draggable={true}
+			>
+				<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
+			</Marker>
+			<Marker
+				onDragStart={handleDragStart}
+				onDragEnd={(e) => handleDragEnd(e, "finish")}
+				color="red"
+				longitude={dest.lng}
+				latitude={dest.lat}
+				anchor="bottom"
+				draggable={true}
+			></Marker>
+			<NavigationControl
+				position="bottom-left"
+				style={{ marginBottom: "8rem" }}
+			></NavigationControl>
+			<FitToViewControl />
+		</M>
 	);
 }
 
