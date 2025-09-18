@@ -79,17 +79,15 @@ class _FitToViewControl implements IControl {
 }
 
 function SearchBox({
-	booths,
 	onBoothSelect,
 	doors,
 }: {
-	booths: FeatureCollection<Polygon>;
 	onBoothSelect: (coords: { lng: number; lat: number }, which: string) => void;
 	doors: FeatureCollection<Point>;
 }) {
-	const [filteredBooths, setFilteredBooths] = useState<
-		Feature<Polygon>[] | null
-	>(booths.features);
+	const [filteredBooths, setFilteredBooths] = useState<Feature<Point>[] | null>(
+		doors.features,
+	);
 	const [originSearchTerm, setOriginSearchTerm] = useState<string | null>(null);
 	const [destSearchTerm, setDestSearchTerm] = useState<string | null>(null);
 	const [focusedSearchbox, setFocusedSearchbox] = useState<string | null>(null);
@@ -118,13 +116,13 @@ function SearchBox({
 					? originSearchTerm || ""
 					: destSearchTerm || "";
 
-			const filteredBooths = booths.features.filter((booth) =>
+			const filteredBooths = doors.features.filter((booth) =>
 				booth.properties?.label?.toLowerCase().includes(searchTerm),
 			);
 			setFilteredBooths(filteredBooths);
 		}, 100);
 		return () => clearTimeout(timeoutId);
-	}, [focusedSearchbox, originSearchTerm, destSearchTerm, booths]);
+	}, [focusedSearchbox, originSearchTerm, destSearchTerm, doors]);
 
 	return (
 		<>
@@ -205,31 +203,26 @@ function SearchBox({
 									<button
 										type="button"
 										onClick={() => {
-											for (const door of doors.features) {
-												if (door.properties?.id === booth.properties?.id) {
-													const coords = {
-														lng: door.geometry.coordinates[0],
-														lat: door.geometry.coordinates[1],
-													};
-													onBoothSelect(coords, focusedSearchbox);
+											const coords = {
+												lng: booth.geometry.coordinates[0],
+												lat: booth.geometry.coordinates[1],
+											};
+											onBoothSelect(coords, focusedSearchbox);
 
-													if (focusedSearchbox === "origin") {
-														setOriginSearchTerm(
-															booth.properties?.label || "NO-Number",
-														);
-														if (destSearchTerm) {
-															setFocusedSearchbox(null);
-														} else setFocusedSearchbox("dest");
-													} else {
-														setDestSearchTerm(
-															booth.properties?.label || "No-Number",
-														);
-														if (originSearchTerm) {
-															setFocusedSearchbox(null);
-														} else setFocusedSearchbox("origin");
-													}
-													break;
-												}
+											if (focusedSearchbox === "origin") {
+												setOriginSearchTerm(
+													booth.properties?.label || "NO-Number",
+												);
+												if (destSearchTerm) {
+													setFocusedSearchbox(null);
+												} else setFocusedSearchbox("dest");
+											} else {
+												setDestSearchTerm(
+													booth.properties?.label || "No-Number",
+												);
+												if (originSearchTerm) {
+													setFocusedSearchbox(null);
+												} else setFocusedSearchbox("origin");
 											}
 										}}
 									>
@@ -293,6 +286,7 @@ function App() {
 					doorFeatures.push(
 						point(walkwayPoint.geometry.coordinates, {
 							id: booth.properties?.id || null,
+							label: booth.properties?.label || null,
 						}),
 					);
 					break;
@@ -392,9 +386,8 @@ function App() {
 					borderRadius: "0.5rem",
 				}}
 			>
-				{boothCollection && doorPointCollection && (
+				{doorPointCollection && (
 					<SearchBox
-						booths={boothCollection}
 						onBoothSelect={handleBoothSelect}
 						doors={doorPointCollection}
 					/>
