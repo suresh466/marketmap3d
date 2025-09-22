@@ -316,6 +316,7 @@ function MyMap({
 
 	return (
 		<M
+			doubleClickZoom={false}
 			interactiveLayerIds={["floormap-extrusion"]}
 			onClick={(e) => handleFloormapClick(e)}
 			initialViewState={{
@@ -417,28 +418,45 @@ function MyMap({
 			)}
 			{popupCoord && (
 				<Popup
+					closeButton={false}
+					closeOnMove={true}
+					focusAfterOpen={false}
+					anchor="top-right"
 					longitude={popupCoord.lng}
 					latitude={popupCoord.lat}
 					onClose={() => setPopupCoord(undefined)}
 				>
-					<button
-						type="button"
-						onClick={() => {
-							setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
-							setPopupCoord(undefined);
-						}}
-					>
-						Im here
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
-							setPopupCoord(undefined);
-						}}
-					>
-						Get here
-					</button>
+					<div className="flex flex-col">
+						{/* Custom close button */}
+						<button
+							className="absolute -right-1 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-all duration-200 hover:bg-red-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1"
+							onClick={() => setPopupCoord(undefined)}
+							aria-label="Close popup"
+							type="button"
+						>
+							<span className="text-xs font-bold">×</span>
+						</button>
+						<button
+							className="mt-4 w-full rounded-lg bg-amber-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
+							type="button"
+							onClick={() => {
+								setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
+								setPopupCoord(undefined);
+							}}
+						>
+							Im here
+						</button>
+						<button
+							className="mt-1 w-full rounded-lg bg-teal-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-teal-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
+							type="button"
+							onClick={() => {
+								setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
+								setPopupCoord(undefined);
+							}}
+						>
+							Get here
+						</button>
+					</div>
 				</Popup>
 			)}
 			<Marker
