@@ -256,7 +256,6 @@ function MyMap({
 	setOrigin,
 	setDest,
 }: MyMapProps) {
-	const [isDragging, setIsDragging] = useState(false);
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
 	const [path, setPath] = useState(null);
 
@@ -306,10 +305,6 @@ function MyMap({
 		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
 	}, [origin, dest, walkwayCollection]);
 
-	function handleDragStart() {
-		setIsDragging(true);
-	}
-
 	function handleDragEnd(e: MarkerDragEvent, which: string) {
 		if (which === "start") {
 			setOrigin(e.lngLat);
@@ -317,31 +312,7 @@ function MyMap({
 		if (which === "finish") {
 			setDest(e.lngLat);
 		}
-		setIsDragging(false);
 	}
-
-	const [pulsePosition, setPulsePosition] = useState(0);
-	const rafRef = useRef<number | null>(null);
-
-	useEffect(() => {
-		if (isDragging) return;
-		let frame = 0;
-
-		const animate = () => {
-			frame += 0.01; // Speed of travel (lower = slower)
-			const position = frame % 1; // position always between 0 and 1
-			setPulsePosition(position);
-			rafRef.current = requestAnimationFrame(animate);
-		};
-
-		rafRef.current = requestAnimationFrame(animate);
-
-		return () => {
-			if (rafRef.current) {
-				cancelAnimationFrame(rafRef.current);
-			}
-		};
-	}, [isDragging]);
 
 	return (
 		<M
@@ -419,17 +390,21 @@ function MyMap({
 						id="path-layer"
 						type="line"
 						paint={{
-							"line-width": 4,
+							"line-width": 6,
 							"line-gradient": [
 								"interpolate",
 								["linear"],
 								["line-progress"],
-								Math.max(0, pulsePosition - 0.1),
-								"rgba(0, 202, 0, 0.5)",
-								pulsePosition,
-								"rgba(255, 255, 0, 1)",
-								Math.min(1, pulsePosition + 0.1),
-								"rgba(0, 202, 0, 1)",
+								0,
+								"rgba(102, 130, 153, 0.5)",
+								0.1,
+								"rgba(102, 130, 153, 1)",
+								0.8,
+								"rgba(102, 130, 153, 1)",
+								0.9,
+								"rgba(229, 0, 0, 1)",
+								1,
+								"rgba(229, 0, 0, 0.5)",
 							],
 						}}
 					/>
@@ -467,7 +442,6 @@ function MyMap({
 				</Popup>
 			)}
 			<Marker
-				onDragStart={handleDragStart}
 				onDragEnd={(e) => handleDragEnd(e, "start")}
 				color="green"
 				longitude={origin.lng}
@@ -478,7 +452,6 @@ function MyMap({
 				<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
 			</Marker>
 			<Marker
-				onDragStart={handleDragStart}
 				onDragEnd={(e) => handleDragEnd(e, "finish")}
 				color="red"
 				longitude={dest.lng}
