@@ -78,6 +78,11 @@ class _FitToViewControl implements IControl {
 	}
 }
 
+function FitToViewControl() {
+	useControl(() => new _FitToViewControl(), { position: "bottom-right" });
+	return null;
+}
+
 function SearchBox({
 	onBoothSelect,
 	doors,
@@ -124,15 +129,25 @@ function SearchBox({
 		return () => clearTimeout(timeoutId);
 	}, [focusedSearchbox, originSearchTerm, destSearchTerm, doors]);
 
+	const isSelected = (boothLabel: string) => {
+		const isSelected =
+			(focusedSearchbox === "origin" &&
+				originSearchTerm === boothLabel.toLowerCase()) ||
+			(focusedSearchbox === "dest" &&
+				destSearchTerm === boothLabel.toLowerCase());
+		console.log(isSelected, originSearchTerm, destSearchTerm, boothLabel);
+		return isSelected;
+	};
+
 	return (
 		<>
 			{focusedSearchbox === null ? (
 				// dummy searchbox
 				<input
+					className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pl-10 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
 					readOnly
 					value={destSearchTerm || ""}
 					id="boothsSearchDummy"
-					className="maplibregl-ctrl"
 					style={{
 						padding: "1rem",
 						borderRadius: "0.5rem",
@@ -149,58 +164,51 @@ function SearchBox({
 					}}
 				/>
 			) : (
-				<>
+				<div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
 					{/* origin searchbox */}
-					<input
-						value={originSearchTerm || ""}
-						ref={originSearchboxRef}
-						id="boothsSearch"
-						className="maplibregl-ctrl"
-						style={{
-							padding: "1rem",
-							borderRadius: "0.5rem",
-							width: "100%",
-							boxSizing: "border-box",
-						}}
-						placeholder="Search Origin Booth"
-						onChange={(e) => setOriginSearchTerm(e.target.value.toLowerCase())}
-						onFocus={() => {
-							if (focusedSearchbox !== "origin") {
-								setFocusedSearchbox("origin");
+					<div className="border-b border-gray-100 p-4">
+						<input
+							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+							value={originSearchTerm || ""}
+							ref={originSearchboxRef}
+							id="boothsSearch"
+							placeholder="Search Origin Booth"
+							onChange={(e) =>
+								setOriginSearchTerm(e.target.value.toLowerCase())
 							}
-						}}
-					/>
+							onFocus={() => {
+								if (focusedSearchbox !== "origin") {
+									setFocusedSearchbox("origin");
+								}
+							}}
+						/>
+					</div>
+
 					{/* dest searchbox */}
-					<input
-						value={destSearchTerm || ""}
-						ref={destSearchboxRef}
-						id="destBoothsSearch"
-						className="maplibregl-ctrl"
-						style={{
-							padding: "1rem",
-							borderRadius: "0.5rem",
-							width: "100%",
-							boxSizing: "border-box",
-						}}
-						placeholder="Search Destination Booth"
-						onChange={(e) => setDestSearchTerm(e.target.value.toLowerCase())}
-						onFocus={() => {
-							if (focusedSearchbox !== "dest") setFocusedSearchbox("dest");
-						}}
-					/>
-					<ul
-						style={{
-							listStyle: "none",
-							padding: 0,
-							width: "100%",
-							color: "black",
-						}}
-					>
+					<div className="border-b border-gray-100 p-4">
+						<input
+							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+							value={destSearchTerm || ""}
+							ref={destSearchboxRef}
+							id="destBoothsSearch"
+							placeholder="Search Destination Booth"
+							onChange={(e) => setDestSearchTerm(e.target.value.toLowerCase())}
+							onFocus={() => {
+								if (focusedSearchbox !== "dest") setFocusedSearchbox("dest");
+							}}
+						/>
+					</div>
+
+					<ul className="max-h-[60vh] overflow-y-auto scroll-smooth divide-y divide-gray-100">
 						{filteredBooths?.map((booth) => {
 							if (!booth.properties?.label) return null;
 							return (
-								<li style={{ padding: "1rem" }} key={booth.properties.id}>
+								<li
+									className="transition-colors duration-200"
+									key={booth.properties.id}
+								>
 									<button
+										className={`w-full px-4 py-3 text-left transition-all duration-200 hover:bg-amber-50 font-medium ${isSelected(booth.properties.label) ? "bg-amber-50 text-amber-900" : "bg-white text-gray-900"}`}
 										type="button"
 										onClick={() => {
 											const coords = {
@@ -226,174 +234,15 @@ function SearchBox({
 											}
 										}}
 									>
-										{booth.properties.label}
+										{booth.properties.label.toUpperCase()}
 									</button>
 								</li>
 							);
 						})}
 					</ul>
-				</>
+				</div>
 			)}
 		</>
-	);
-}
-
-function FitToViewControl() {
-	useControl(() => new _FitToViewControl(), { position: "bottom-right" });
-	return null;
-}
-
-function App() {
-	const [boothCollection, setBoothCollection] =
-		useState<FeatureCollection<Polygon> | null>(null);
-	const [floorplan, setFloorplan] = useState<FeatureCollection<Polygon> | null>(
-		null,
-	);
-	const [wallCollection, setWallCollection] = useState<FeatureCollection<
-		Polygon | MultiPolygon
-	> | null>(null);
-	const [walkwayCollection, setWalkwayCollection] =
-		useState<FeatureCollection<LineString> | null>(null);
-	const [origin, setOrigin] = useState<{ lng: number; lat: number }>({
-		lng: -79.35914121022692,
-		lat: 43.81261407787761,
-	});
-	const [doorPointCollection, setDoorPointCollection] =
-		useState<FeatureCollection<Point> | null>(null);
-	const [dest, setDest] = useState<{ lng: number; lat: number }>({
-		lng: -79.35974282681403,
-		lat: 43.812829177963664,
-	});
-
-	function handleBoothSelect(
-		coords: { lng: number; lat: number },
-		which: string,
-	) {
-		which === "origin" ? setOrigin(coords) : setDest(coords);
-	}
-
-	useEffect(() => {
-		if (!(floorplan && walkwayCollection)) return;
-		const walkwayPoints = explode(walkwayCollection);
-		const bufferedBooths = floorplan.features
-			.map((booth) => buffer(booth, 0.0000001))
-			.filter((booth): booth is Feature<Polygon> => Boolean(booth));
-
-		const doorFeatures: Feature<Point>[] = [];
-		for (const booth of bufferedBooths) {
-			for (const walkwayPoint of walkwayPoints.features) {
-				if (booleanPointInPolygon(walkwayPoint, booth)) {
-					doorFeatures.push(
-						point(walkwayPoint.geometry.coordinates, {
-							id: booth.properties?.id || null,
-							label: booth.properties?.label || null,
-						}),
-					);
-					break;
-				}
-			}
-		}
-		const doorPointCollection = featureCollection(doorFeatures);
-		setDoorPointCollection(doorPointCollection);
-	}, [floorplan, walkwayCollection]);
-
-	useEffect(() => {
-		async function processFeatures() {
-			const response = await fetch("/floorplan.geojson");
-			const floorplan = await response.json();
-
-			const response_walkways = await fetch(
-				"../public/walkway-connected-complete-single.geojson",
-			);
-			const walkwayCollection = await response_walkways.json();
-
-			const boothFeatures = [];
-			const wallFeatures = [];
-			for (const feature of floorplan.features) {
-				let floorFeature = {
-					...feature,
-					properties: {
-						...feature.properties,
-						type: "floor",
-					},
-				};
-				floorFeature = buffer(feature, -0.0000015, { units: "degrees" });
-				boothFeatures.push(floorFeature);
-
-				// Create a LineString from the polygon coordinates
-				const perimeterLine = {
-					...feature, // Copy all properties from original feature
-					geometry: {
-						coordinates: feature.geometry.coordinates[0],
-						type: "LineString",
-					},
-					properties: {
-						...feature.properties,
-						type: "wall",
-					},
-				};
-
-				// Buffer the line to create a polygon with actual width
-				const wallFeature = buffer(perimeterLine, 0.0000003, {
-					units: "degrees",
-				});
-				wallFeature
-					? wallFeatures.push(wallFeature)
-					: console.log("wall not built, something went wrong!");
-			}
-
-			setFloorplan(floorplan);
-			setBoothCollection({
-				type: "FeatureCollection",
-				features: boothFeatures,
-			});
-			setWallCollection({ type: "FeatureCollection", features: wallFeatures });
-			setWalkwayCollection(walkwayCollection);
-		}
-		processFeatures();
-	}, []);
-
-	return (
-		<div style={{ position: "relative", width: "100%", height: "100%" }}>
-			<div
-				style={{
-					position: "absolute",
-					zIndex: 8,
-					width: "100%",
-					height: "100%",
-				}}
-			>
-				<MyMap
-					doorPointCollection={doorPointCollection}
-					boothCollection={boothCollection}
-					walkwayCollection={walkwayCollection}
-					wallCollection={wallCollection}
-					origin={origin}
-					dest={dest}
-					setOrigin={setOrigin}
-					setDest={setDest}
-				></MyMap>
-			</div>
-			<div
-				style={{
-					position: "absolute",
-					zIndex: 9,
-					left: "1rem",
-					right: "1rem",
-					top: "1rem",
-					backgroundColor: "white",
-					padding: "1rem",
-					borderRadius: "0.5rem",
-				}}
-			>
-				{doorPointCollection && (
-					<SearchBox
-						onBoothSelect={handleBoothSelect}
-						doors={doorPointCollection}
-					/>
-				)}
-			</div>
-		</div>
 	);
 }
 
@@ -643,6 +492,150 @@ function MyMap({
 			></NavigationControl>
 			<FitToViewControl />
 		</M>
+	);
+}
+
+function App() {
+	const [boothCollection, setBoothCollection] =
+		useState<FeatureCollection<Polygon> | null>(null);
+	const [floorplan, setFloorplan] = useState<FeatureCollection<Polygon> | null>(
+		null,
+	);
+	const [wallCollection, setWallCollection] = useState<FeatureCollection<
+		Polygon | MultiPolygon
+	> | null>(null);
+	const [walkwayCollection, setWalkwayCollection] =
+		useState<FeatureCollection<LineString> | null>(null);
+	const [origin, setOrigin] = useState<{ lng: number; lat: number }>({
+		lng: -79.35914121022692,
+		lat: 43.81261407787761,
+	});
+	const [doorPointCollection, setDoorPointCollection] =
+		useState<FeatureCollection<Point> | null>(null);
+	const [dest, setDest] = useState<{ lng: number; lat: number }>({
+		lng: -79.35974282681403,
+		lat: 43.812829177963664,
+	});
+
+	function handleBoothSelect(
+		coords: { lng: number; lat: number },
+		which: string,
+	) {
+		which === "origin" ? setOrigin(coords) : setDest(coords);
+	}
+
+	useEffect(() => {
+		if (!(floorplan && walkwayCollection)) return;
+		const walkwayPoints = explode(walkwayCollection);
+		const bufferedBooths = floorplan.features
+			.map((booth) => buffer(booth, 0.0000001))
+			.filter((booth): booth is Feature<Polygon> => Boolean(booth));
+
+		const doorFeatures: Feature<Point>[] = [];
+		for (const booth of bufferedBooths) {
+			for (const walkwayPoint of walkwayPoints.features) {
+				if (booleanPointInPolygon(walkwayPoint, booth)) {
+					doorFeatures.push(
+						point(walkwayPoint.geometry.coordinates, {
+							id: booth.properties?.id || null,
+							label: booth.properties?.label || null,
+						}),
+					);
+					break;
+				}
+			}
+		}
+		const doorPointCollection = featureCollection(doorFeatures);
+		setDoorPointCollection(doorPointCollection);
+	}, [floorplan, walkwayCollection]);
+
+	useEffect(() => {
+		async function processFeatures() {
+			const response = await fetch("/floorplan.geojson");
+			const floorplan = await response.json();
+
+			const response_walkways = await fetch(
+				"../public/walkway-connected-complete-single.geojson",
+			);
+			const walkwayCollection = await response_walkways.json();
+
+			const boothFeatures = [];
+			const wallFeatures = [];
+			for (const feature of floorplan.features) {
+				let floorFeature = {
+					...feature,
+					properties: {
+						...feature.properties,
+						type: "floor",
+					},
+				};
+				floorFeature = buffer(feature, -0.0000015, { units: "degrees" });
+				boothFeatures.push(floorFeature);
+
+				// Create a LineString from the polygon coordinates
+				const perimeterLine = {
+					...feature, // Copy all properties from original feature
+					geometry: {
+						coordinates: feature.geometry.coordinates[0],
+						type: "LineString",
+					},
+					properties: {
+						...feature.properties,
+						type: "wall",
+					},
+				};
+
+				// Buffer the line to create a polygon with actual width
+				const wallFeature = buffer(perimeterLine, 0.0000003, {
+					units: "degrees",
+				});
+				wallFeature
+					? wallFeatures.push(wallFeature)
+					: console.log("wall not built, something went wrong!");
+			}
+
+			setFloorplan(floorplan);
+			setBoothCollection({
+				type: "FeatureCollection",
+				features: boothFeatures,
+			});
+			setWallCollection({ type: "FeatureCollection", features: wallFeatures });
+			setWalkwayCollection(walkwayCollection);
+		}
+		processFeatures();
+	}, []);
+
+	return (
+		<div style={{ position: "relative", width: "100%", height: "100%" }}>
+			<div
+				style={{
+					position: "absolute",
+					zIndex: 8,
+					width: "100%",
+					height: "100%",
+				}}
+			>
+				<MyMap
+					doorPointCollection={doorPointCollection}
+					boothCollection={boothCollection}
+					walkwayCollection={walkwayCollection}
+					wallCollection={wallCollection}
+					origin={origin}
+					dest={dest}
+					setOrigin={setOrigin}
+					setDest={setDest}
+				></MyMap>
+			</div>
+			{/* searchbox */}
+			<div className="absolute inset-x-4 top-2 z-20 md:inset-auto md:left-6 md:top-6 md:w-1/4">
+				{doorPointCollection && (
+					<SearchBox
+						onBoothSelect={handleBoothSelect}
+						doors={doorPointCollection}
+					/>
+				)}
+			</div>
+		</div>
 	);
 }
 
