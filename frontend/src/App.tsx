@@ -1,6 +1,18 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 
+export interface SearchBoxProps {
+	activeOverlay: "searchbox" | "popup" | null;
+	setActiveOverlay: React.Dispatch<
+		React.SetStateAction<"searchbox" | "popup" | null>
+	>;
+	onBoothSelect: (coords: { lng: number; lat: number }, which: string) => void;
+	doors: FeatureCollection<Point>;
+}
 export interface MyMapProps {
+	activeOverlay: "popup" | "searchbox" | null;
+	setActiveOverlay: React.Dispatch<
+		React.SetStateAction<"searchbox" | "popup" | null>
+	>;
 	origin: { lng: number; lat: number };
 	dest: { lng: number; lat: number };
 	boothCollection: FeatureCollection<Polygon> | null;
@@ -33,6 +45,7 @@ import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
 import { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
 	IControl,
@@ -84,12 +97,11 @@ function FitToViewControl() {
 }
 
 function SearchBox({
+	activeOverlay,
+	setActiveOverlay,
 	onBoothSelect,
 	doors,
-}: {
-	onBoothSelect: (coords: { lng: number; lat: number }, which: string) => void;
-	doors: FeatureCollection<Point>;
-}) {
+}: SearchBoxProps) {
 	const [filteredBooths, setFilteredBooths] = useState<Feature<Point>[] | null>(
 		doors.features,
 	);
@@ -98,6 +110,10 @@ function SearchBox({
 	const [focusedSearchbox, setFocusedSearchbox] = useState<string | null>(null);
 	const originSearchboxRef = useRef<HTMLInputElement | null>(null);
 	const destSearchboxRef = useRef<HTMLInputElement | null>(null);
+
+	useEffect(() => {
+		if (activeOverlay !== "searchbox") setFocusedSearchbox(null);
+	}, [activeOverlay]);
 
 	useEffect(() => {
 		if (!focusedSearchbox) return;
@@ -135,7 +151,6 @@ function SearchBox({
 				originSearchTerm === boothLabel.toLowerCase()) ||
 			(focusedSearchbox === "dest" &&
 				destSearchTerm === boothLabel.toLowerCase());
-		console.log(isSelected, originSearchTerm, destSearchTerm, boothLabel);
 		return isSelected;
 	};
 
@@ -146,7 +161,7 @@ function SearchBox({
 				<input
 					className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pl-10 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
 					readOnly
-					value={destSearchTerm || ""}
+					value={destSearchTerm?.toUpperCase() || ""}
 					id="boothsSearchDummy"
 					style={{
 						padding: "1rem",
@@ -156,6 +171,7 @@ function SearchBox({
 					}}
 					placeholder="Search For a Booth"
 					onFocus={() => {
+						if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
 						if (originSearchTerm === null || originSearchTerm === "") {
 							setFocusedSearchbox("origin");
 						} else {
@@ -168,6 +184,7 @@ function SearchBox({
 					{/* origin searchbox */}
 					<div className="border-b border-gray-100 p-4">
 						<input
+							type="search"
 							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
 							value={originSearchTerm || ""}
 							ref={originSearchboxRef}
@@ -187,6 +204,7 @@ function SearchBox({
 					{/* dest searchbox */}
 					<div className="border-b border-gray-100 p-4">
 						<input
+							type="search"
 							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
 							value={destSearchTerm || ""}
 							ref={destSearchboxRef}
@@ -247,6 +265,8 @@ function SearchBox({
 }
 
 function MyMap({
+	activeOverlay,
+	setActiveOverlay,
 	boothCollection,
 	walkwayCollection,
 	wallCollection,
@@ -259,17 +279,20 @@ function MyMap({
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
 	const [path, setPath] = useState(null);
 
-	function handleFloormapClick(e: MapLayerMouseEvent) {
-		if (e.features) {
-			const bounds = new LngLatBounds([
-				[-79.36003227, 43.81250021],
-				[-79.3585528, 43.813410058],
-			]);
+	useEffect(() => {
+		if (activeOverlay !== "popup") setPopupCoord(undefined);
+	}, [activeOverlay]);
 
-			const isInside = bounds.contains(e.lngLat);
-			if (isInside) {
-				setPopupCoord(e.lngLat);
-			}
+	function handleMapClick(e: MapLayerMouseEvent) {
+		if (activeOverlay !== "popup") setActiveOverlay("popup");
+		const bounds = new LngLatBounds([
+			[-79.36003227, 43.81250021],
+			[-79.3585528, 43.813410058],
+		]);
+
+		const isInside = bounds.contains(e.lngLat);
+		if (isInside) {
+			setPopupCoord(e.lngLat);
 		}
 	}
 
@@ -318,7 +341,7 @@ function MyMap({
 		<M
 			doubleClickZoom={false}
 			interactiveLayerIds={["floormap-extrusion"]}
-			onClick={(e) => handleFloormapClick(e)}
+			onClick={(e) => handleMapClick(e)}
 			initialViewState={{
 				longitude: -79.35929253500002,
 				latitude: 43.81295513573272,
@@ -487,6 +510,9 @@ function MyMap({
 }
 
 function App() {
+	const [activeOverlay, setActiveOverlay] = useState<
+		"popup" | "searchbox" | null
+	>(null);
 	const [boothCollection, setBoothCollection] =
 		useState<FeatureCollection<Polygon> | null>(null);
 	const [floorplan, setFloorplan] = useState<FeatureCollection<Polygon> | null>(
@@ -607,6 +633,8 @@ function App() {
 				}}
 			>
 				<MyMap
+					activeOverlay={activeOverlay}
+					setActiveOverlay={setActiveOverlay}
 					doorPointCollection={doorPointCollection}
 					boothCollection={boothCollection}
 					walkwayCollection={walkwayCollection}
@@ -621,6 +649,8 @@ function App() {
 			<div className="absolute inset-x-4 top-2 z-20 md:inset-auto md:left-6 md:top-6 md:w-1/4">
 				{doorPointCollection && (
 					<SearchBox
+						activeOverlay={activeOverlay}
+						setActiveOverlay={setActiveOverlay}
 						onBoothSelect={handleBoothSelect}
 						doors={doorPointCollection}
 					/>
