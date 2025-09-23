@@ -112,7 +112,17 @@ function SearchBox({
 	const destSearchboxRef = useRef<HTMLInputElement | null>(null);
 
 	useEffect(() => {
-		if (activeOverlay !== "searchbox") setFocusedSearchbox(null);
+		const handleBackNavigation = () => {
+			setFocusedSearchbox(null);
+		};
+		addEventListener("popstate", handleBackNavigation);
+		return () => removeEventListener("popstate", handleBackNavigation);
+	}, []);
+
+	useEffect(() => {
+		if (activeOverlay === "popup" && history.state?.collapseSearchbox) {
+			history.back();
+		}
 	}, [activeOverlay]);
 
 	useEffect(() => {
@@ -172,6 +182,9 @@ function SearchBox({
 					placeholder="Search For a Booth"
 					onFocus={() => {
 						if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
+						if (!history.state?.collapseSearchbox) {
+							history.pushState({ collapseSearchbox: true }, "", "");
+						}
 						if (originSearchTerm === null || originSearchTerm === "") {
 							setFocusedSearchbox("origin");
 						} else {
@@ -240,14 +253,15 @@ function SearchBox({
 													booth.properties?.label || "NO-Number",
 												);
 												if (destSearchTerm) {
-													setFocusedSearchbox(null);
+													// event listener sets focusedSearchbox to null
+													history.back();
 												} else setFocusedSearchbox("dest");
 											} else {
 												setDestSearchTerm(
 													booth.properties?.label || "No-Number",
 												);
 												if (originSearchTerm) {
-													setFocusedSearchbox(null);
+													history.back();
 												} else setFocusedSearchbox("origin");
 											}
 										}}
