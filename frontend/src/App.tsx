@@ -24,7 +24,6 @@ export interface MyMapProps {
 }
 
 import "./App.css";
-
 import {
 	booleanPointInPolygon,
 	buffer,
@@ -44,6 +43,7 @@ import type {
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
 import { LngLatBounds } from "maplibre-gl";
+import { useMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -57,7 +57,6 @@ import {
 	Layer,
 	Map as M,
 	Marker,
-	NavigationControl,
 	Popup,
 	Source,
 	useControl,
@@ -220,10 +219,10 @@ class _FitToViewControl implements IControl {
 	onAdd(map: MapLibreMap): HTMLElement {
 		this.#container = document.createElement("div");
 		this.#container.className = "maplibregl-ctrl";
-		this.#container.style.marginBottom = "8rem";
+		// this.#container.style.marginBottom = "8rem";
 
 		const button = document.createElement("button");
-		button.className = "maplibregl-ctrl-icon";
+		button.className = "maplibregl-ctrl maplibregl-ctrl-icon w-4";
 		button.innerHTML = "👆";
 		button.onclick = () => {
 			const bounds: LngLatBoundsLike = [
@@ -244,6 +243,56 @@ class _FitToViewControl implements IControl {
 
 function FitToViewControl() {
 	useControl(() => new _FitToViewControl(), { position: "bottom-right" });
+	return null;
+}
+
+import type { ControlPosition, NavigationControlOptions } from "maplibre-gl";
+// import type { MapRef } from "react-map-gl/maplibre";
+
+export type NavigationControlProps = NavigationControlOptions & {
+	// currentMap: MapRef;
+	/** Placement of the control relative to the map. */
+	position?: ControlPosition;
+	/** CSS style override, applied to the control's container */
+	style?: React.CSSProperties;
+};
+
+function CustomNavControl(props: NavigationControlProps) {
+	const { current: currentMap } = useMap();
+
+	useControl(
+		({ mapLib }) => {
+			const mapInstance = currentMap?.getMap();
+			if (!mapInstance) {
+				// Return a dummy IControl
+				return {
+					onAdd: () => document.createElement("div"),
+					onRemove: () => {},
+				};
+			}
+
+			const nav = new mapLib.NavigationControl(props);
+			const container = nav.onAdd(mapInstance);
+
+			const compassBtn = container.getElementsByClassName(
+				"maplibregl-ctrl-compass",
+			)[0] as HTMLButtonElement;
+
+			compassBtn.onclick = () => {
+				mapInstance.fitBounds([
+					[-79.36003227, 43.81250021],
+					[-79.3585528, 43.813410058],
+				]);
+			};
+
+			return {
+				onAdd: () => container,
+				onRemove: () => container.remove(),
+			};
+		},
+		{ position: props.position },
+	);
+
 	return null;
 }
 
@@ -483,11 +532,11 @@ function MyMap({
 				anchor="bottom"
 				draggable={true}
 			></Marker>
-			<NavigationControl
-				position="bottom-left"
-				style={{ marginBottom: "8rem" }}
-			></NavigationControl>
-			<FitToViewControl />
+			<CustomNavControl
+				showZoom={false}
+				position="bottom-right"
+				// style={{ marginBottom: "8rem" }}
+			/>
 		</M>
 	);
 }
