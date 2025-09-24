@@ -1,5 +1,12 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 
+export type NavigationControlProps = NavigationControlOptions & {
+	/** Placement of the control relative to the map. */
+	position?: ControlPosition;
+	/** CSS style override, applied to the control's container */
+	style?: React.CSSProperties;
+};
+
 export interface SearchBoxProps {
 	activeOverlay: "searchbox" | "popup" | null;
 	setActiveOverlay: React.Dispatch<
@@ -41,14 +48,12 @@ import type {
 	Polygon,
 } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
-import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
+import type { ControlPosition, NavigationControlOptions } from "maplibre-gl";
 import { LngLatBounds } from "maplibre-gl";
-import { useMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
-	IControl,
 	LngLat,
 	MapLayerMouseEvent,
 	MarkerDragEvent,
@@ -213,81 +218,27 @@ function App() {
 	);
 }
 
-class _FitToViewControl implements IControl {
-	#container: HTMLDivElement | undefined;
-
-	onAdd(map: MapLibreMap): HTMLElement {
-		this.#container = document.createElement("div");
-		this.#container.className = "maplibregl-ctrl";
-		// this.#container.style.marginBottom = "8rem";
-
-		const button = document.createElement("button");
-		button.className = "maplibregl-ctrl maplibregl-ctrl-icon w-4";
-		button.innerHTML = "👆";
-		button.onclick = () => {
-			const bounds: LngLatBoundsLike = [
-				[-79.36003227, 43.81250021],
-				[-79.3585528, 43.813410058],
-			];
-			map.fitBounds(bounds);
-		};
-
-		this.#container.appendChild(button);
-		return this.#container;
-	}
-
-	onRemove() {
-		this.#container?.remove();
-	}
-}
-
-function FitToViewControl() {
-	useControl(() => new _FitToViewControl(), { position: "bottom-right" });
-	return null;
-}
-
-import type { ControlPosition, NavigationControlOptions } from "maplibre-gl";
-// import type { MapRef } from "react-map-gl/maplibre";
-
-export type NavigationControlProps = NavigationControlOptions & {
-	// currentMap: MapRef;
-	/** Placement of the control relative to the map. */
-	position?: ControlPosition;
-	/** CSS style override, applied to the control's container */
-	style?: React.CSSProperties;
-};
-
-function CustomNavControl(props: NavigationControlProps) {
-	const { current: currentMap } = useMap();
-
+function NavControlWithFitBounds(props: NavigationControlProps) {
 	useControl(
 		({ mapLib }) => {
-			const mapInstance = currentMap?.getMap();
-			if (!mapInstance) {
-				// Return a dummy IControl
-				return {
-					onAdd: () => document.createElement("div"),
-					onRemove: () => {},
-				};
-			}
-
 			const nav = new mapLib.NavigationControl(props);
-			const container = nav.onAdd(mapInstance);
-
-			const compassBtn = container.getElementsByClassName(
-				"maplibregl-ctrl-compass",
-			)[0] as HTMLButtonElement;
-
-			compassBtn.onclick = () => {
-				mapInstance.fitBounds([
-					[-79.36003227, 43.81250021],
-					[-79.3585528, 43.813410058],
-				]);
-			};
 
 			return {
-				onAdd: () => container,
-				onRemove: () => container.remove(),
+				onAdd: (map) => {
+					const container = nav.onAdd(map);
+					const compassBtn = container.getElementsByClassName(
+						"maplibregl-ctrl-compass",
+					)[0] as HTMLButtonElement;
+
+					compassBtn.onclick = () => {
+						map.fitBounds([
+							[-79.36003227, 43.81250021],
+							[-79.3585528, 43.813410058],
+						]);
+					};
+					return container;
+				},
+				onRemove: () => nav.onRemove(),
 			};
 		},
 		{ position: props.position },
@@ -532,7 +483,7 @@ function MyMap({
 				anchor="bottom"
 				draggable={true}
 			></Marker>
-			<CustomNavControl
+			<NavControlWithFitBounds
 				showZoom={false}
 				position="bottom-right"
 				// style={{ marginBottom: "8rem" }}
@@ -614,7 +565,7 @@ function SearchBox({
 			{focusedSearchbox === null ? (
 				// dummy searchbox
 				<input
-					className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pl-10 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+					className="placeholder:font-medium  w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pl-10 text-gray-700 placeholder-gray-500 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
 					readOnly
 					value={destSearchTerm?.toUpperCase() || ""}
 					id="boothsSearchDummy"
