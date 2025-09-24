@@ -181,28 +181,19 @@ function App() {
 	}
 
 	return (
-		<div style={{ position: "relative", width: "100%", height: "100%" }}>
-			<div
-				style={{
-					position: "absolute",
-					zIndex: 8,
-					width: "100%",
-					height: "100%",
-				}}
-			>
-				<MyMap
-					activeOverlay={activeOverlay}
-					setActiveOverlay={setActiveOverlay}
-					doorPointCollection={doorPointCollection}
-					boothCollection={boothCollection}
-					walkwayCollection={walkwayCollection}
-					wallCollection={wallCollection}
-					origin={origin}
-					dest={dest}
-					setOrigin={setOrigin}
-					setDest={setDest}
-				></MyMap>
-			</div>
+		<>
+			<MyMap
+				activeOverlay={activeOverlay}
+				setActiveOverlay={setActiveOverlay}
+				doorPointCollection={doorPointCollection}
+				boothCollection={boothCollection}
+				walkwayCollection={walkwayCollection}
+				wallCollection={wallCollection}
+				origin={origin}
+				dest={dest}
+				setOrigin={setOrigin}
+				setDest={setDest}
+			></MyMap>
 			{/* searchbox */}
 			<div className="absolute inset-x-4 top-2 z-20 md:inset-auto md:left-6 md:top-6 md:w-1/4">
 				{doorPointCollection && (
@@ -214,7 +205,7 @@ function App() {
 					/>
 				)}
 			</div>
-		</div>
+		</>
 	);
 }
 
@@ -336,7 +327,7 @@ function MyMap({
 				[-79.354266405, 43.814891107],
 			]}
 			style={{
-				position: "relative",
+				position: "absolute",
 				width: "100%",
 				height: "100%",
 			}}
@@ -473,7 +464,7 @@ function MyMap({
 				anchor="center"
 				draggable={true}
 			>
-				<img style={{ height: "2rem" }} src="./start.png" alt="humanoid" />
+				<img className="h-10" src="./start.png" alt="humanoid" />
 			</Marker>
 			<Marker
 				onDragEnd={(e) => handleDragEnd(e, "finish")}
@@ -483,11 +474,7 @@ function MyMap({
 				anchor="bottom"
 				draggable={true}
 			></Marker>
-			<NavControlWithFitBounds
-				showZoom={false}
-				position="bottom-right"
-				// style={{ marginBottom: "8rem" }}
-			/>
+			<NavControlWithFitBounds showZoom={false} position="bottom-right" />
 		</M>
 	);
 }
@@ -569,12 +556,6 @@ function SearchBox({
 					readOnly
 					value={destSearchTerm?.toUpperCase() || ""}
 					id="boothsSearchDummy"
-					style={{
-						padding: "1rem",
-						borderRadius: "0.5rem",
-						width: "100%",
-						boxSizing: "border-box",
-					}}
 					placeholder="Search For a Booth"
 					onFocus={() => {
 						if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
