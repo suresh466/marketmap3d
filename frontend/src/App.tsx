@@ -1,10 +1,7 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 
-export type NavigationControlProps = NavigationControlOptions & {
-	/** Placement of the control relative to the map. */
+export type NavControlWithFitBoundsProps = NavigationControlOptions & {
 	position?: ControlPosition;
-	/** CSS style override, applied to the control's container */
-	style?: React.CSSProperties;
 };
 
 export interface SearchBoxProps {
@@ -59,6 +56,7 @@ import type {
 	MarkerDragEvent,
 } from "react-map-gl/maplibre";
 import {
+	AttributionControl,
 	Layer,
 	Map as M,
 	Marker,
@@ -209,7 +207,7 @@ function App() {
 	);
 }
 
-function NavControlWithFitBounds(props: NavigationControlProps) {
+function NavControlWithFitBounds(props: NavControlWithFitBoundsProps) {
 	useControl(
 		({ mapLib }) => {
 			const nav = new mapLib.NavigationControl(props);
@@ -315,6 +313,7 @@ function MyMap({
 
 	return (
 		<M
+			attributionControl={false}
 			doubleClickZoom={false}
 			interactiveLayerIds={["floormap-extrusion"]}
 			onClick={(e) => handleMapClick(e)}
@@ -476,6 +475,7 @@ function MyMap({
 				anchor="bottom"
 				draggable={true}
 			></Marker>
+			<AttributionControl position="bottom-left" />
 			<NavControlWithFitBounds showZoom={false} position="bottom-right" />
 		</M>
 	);
