@@ -217,6 +217,8 @@ function NavControlWithFitBounds(props: NavigationControlProps) {
 			return {
 				onAdd: (map) => {
 					const container = nav.onAdd(map);
+					container.style.marginBottom =
+						"calc(2rem + env(safe-area-inset-bottom))";
 					const compassBtn = container.getElementsByClassName(
 						"maplibregl-ctrl-compass",
 					)[0] as HTMLButtonElement;
