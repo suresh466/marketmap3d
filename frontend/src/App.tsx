@@ -17,6 +17,11 @@ export interface MyMapProps {
 	setActiveOverlay: React.Dispatch<
 		React.SetStateAction<"searchbox" | "popup" | null>
 	>;
+	handleBoothSelect: (
+		coords: { lng: number; lat: number },
+		which: string,
+	) => void;
+
 	origin: { lng: number; lat: number };
 	dest: { lng: number; lat: number };
 	roofCollection: FeatureCollection<Polygon> | null;
@@ -52,11 +57,7 @@ import { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import type {
-	LngLat,
-	MapLayerMouseEvent,
-	MarkerDragEvent,
-} from "react-map-gl/maplibre";
+import type { LngLat, MapLayerMouseEvent } from "react-map-gl/maplibre";
 import {
 	AttributionControl,
 	Layer,
@@ -161,6 +162,7 @@ function App() {
 	return (
 		<>
 			<MyMap
+				handleBoothSelect={handleBoothSelect}
 				activeOverlay={activeOverlay}
 				setActiveOverlay={setActiveOverlay}
 				floorCollection={floorCollection}
@@ -220,6 +222,7 @@ function NavControlWithFitBounds(props: NavControlWithFitBoundsProps) {
 }
 
 function MyMap({
+	handleBoothSelect,
 	activeOverlay,
 	setActiveOverlay,
 	roofCollection,
@@ -269,15 +272,6 @@ function MyMap({
 		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
 		(path?.path.length || 0) > 2 ? setPath(pathToGeoJSON(path)) : setPath(null);
 	}, [origin, dest, walkwayCollection]);
-
-	function handleDragEnd(e: MarkerDragEvent, which: string) {
-		if (which === "start") {
-			setOrigin(e.lngLat);
-		}
-		if (which === "finish") {
-			setDest(e.lngLat);
-		}
-	}
 
 	function handleMapClick(e: MapLayerMouseEvent) {
 		if (activeOverlay !== "popup") setActiveOverlay("popup");
@@ -449,7 +443,7 @@ function MyMap({
 				</Popup>
 			)}
 			<Marker
-				onDragEnd={(e) => handleDragEnd(e, "start")}
+				onDragEnd={(e) => handleBoothSelect(e.lngLat, "start")}
 				color="green"
 				longitude={origin.lng}
 				latitude={origin.lat}
@@ -459,7 +453,7 @@ function MyMap({
 				<img className="h-10" src="./start.png" alt="humanoid" />
 			</Marker>
 			<Marker
-				onDragEnd={(e) => handleDragEnd(e, "finish")}
+				onDragEnd={(e) => handleBoothSelect(e.lngLat, "finish")}
 				color="red"
 				longitude={dest.lng}
 				latitude={dest.lat}
