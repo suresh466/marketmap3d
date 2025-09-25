@@ -19,7 +19,8 @@ export interface MyMapProps {
 	>;
 	origin: { lng: number; lat: number };
 	dest: { lng: number; lat: number };
-	boothCollection: FeatureCollection<Polygon> | null;
+	roofCollection: FeatureCollection<Polygon> | null;
+	floorCollection: FeatureCollection<Polygon> | null;
 	walkwayCollection: FeatureCollection<LineString> | null;
 	wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
 	doorPointCollection: FeatureCollection<Point> | null;
@@ -35,6 +36,7 @@ import {
 	featureCollection,
 	nearestPoint,
 	point,
+	polygonToLine,
 } from "@turf/turf";
 import type {
 	Feature,
@@ -69,11 +71,11 @@ function App() {
 	const [activeOverlay, setActiveOverlay] = useState<
 		"popup" | "searchbox" | null
 	>(null);
-	const [boothCollection, setBoothCollection] =
+
+	const [roofCollection, setRoofCollection] =
 		useState<FeatureCollection<Polygon> | null>(null);
-	const [floorplan, setFloorplan] = useState<FeatureCollection<Polygon> | null>(
-		null,
-	);
+	const [floorCollection, setFloorCollection] =
+		useState<FeatureCollection<Polygon> | null>(null);
 	const [wallCollection, setWallCollection] = useState<FeatureCollection<
 		Polygon | MultiPolygon
 	> | null>(null);
@@ -91,9 +93,9 @@ function App() {
 	});
 
 	useEffect(() => {
-		if (!(floorplan && walkwayCollection)) return;
+		if (!(floorCollection && walkwayCollection)) return;
 		const walkwayPoints = explode(walkwayCollection);
-		const bufferedBooths = floorplan.features
+		const bufferedBooths = floorCollection.features
 			.map((booth) => buffer(booth, 0.0000001))
 			.filter((booth): booth is Feature<Polygon> => Boolean(booth));
 
@@ -113,59 +115,37 @@ function App() {
 		}
 		const doorPointCollection = featureCollection(doorFeatures);
 		setDoorPointCollection(doorPointCollection);
-	}, [floorplan, walkwayCollection]);
+	}, [floorCollection, walkwayCollection]);
 
 	useEffect(() => {
 		async function processFeatures() {
 			const response = await fetch("/floorplan.geojson");
-			const floorplan = await response.json();
-
 			const response_walkways = await fetch(
 				"../public/walkway-connected-complete-single.geojson",
 			);
+			const floorplanCollection = await response.json();
 			const walkwayCollection = await response_walkways.json();
 
-			const boothFeatures = [];
-			const wallFeatures = [];
-			for (const feature of floorplan.features) {
-				let floorFeature = {
-					...feature,
-					properties: {
-						...feature.properties,
-						type: "floor",
-					},
-				};
-				floorFeature = buffer(feature, -0.0000015, { units: "degrees" });
-				boothFeatures.push(floorFeature);
+			const floorFeatures = buffer(floorplanCollection, 0.1, {
+				units: "meters",
+			}) as unknown as FeatureCollection<Polygon>;
 
-				// Create a LineString from the polygon coordinates
-				const perimeterLine = {
-					...feature, // Copy all properties from original feature
-					geometry: {
-						coordinates: feature.geometry.coordinates[0],
-						type: "LineString",
-					},
-					properties: {
-						...feature.properties,
-						type: "wall",
-					},
-				};
+			const roofFeatures = buffer(floorplanCollection, -0.1, {
+				units: "meters",
+			}) as unknown as FeatureCollection<Polygon>;
 
-				// Buffer the line to create a polygon with actual width
-				const wallFeature = buffer(perimeterLine, 0.0000003, {
-					units: "degrees",
-				});
-				wallFeature
-					? wallFeatures.push(wallFeature)
-					: console.log("wall not built, something went wrong!");
-			}
+			const lineCollection = featureCollection(
+				floorplanCollection.features.map((poly: Feature<Polygon>) =>
+					polygonToLine(poly),
+				),
+			);
+			const wallFeatures = buffer(lineCollection, 0.1, {
+				units: "meters",
+			}) as unknown as FeatureCollection<Polygon>;
 
-			setFloorplan(floorplan);
-			setBoothCollection({
-				type: "FeatureCollection",
-				features: boothFeatures,
-			});
-			setWallCollection({ type: "FeatureCollection", features: wallFeatures });
+			setFloorCollection(floorFeatures);
+			setRoofCollection(roofFeatures);
+			setWallCollection(wallFeatures);
 			setWalkwayCollection(walkwayCollection);
 		}
 		processFeatures();
@@ -183,8 +163,9 @@ function App() {
 			<MyMap
 				activeOverlay={activeOverlay}
 				setActiveOverlay={setActiveOverlay}
+				floorCollection={floorCollection}
 				doorPointCollection={doorPointCollection}
-				boothCollection={boothCollection}
+				roofCollection={roofCollection}
 				walkwayCollection={walkwayCollection}
 				wallCollection={wallCollection}
 				origin={origin}
@@ -241,7 +222,7 @@ function NavControlWithFitBounds(props: NavControlWithFitBoundsProps) {
 function MyMap({
 	activeOverlay,
 	setActiveOverlay,
-	boothCollection,
+	roofCollection,
 	walkwayCollection,
 	wallCollection,
 	doorPointCollection,
@@ -321,6 +302,7 @@ function MyMap({
 				longitude: -79.35929253500002,
 				latitude: 43.81295513573272,
 				zoom: 18,
+				pitch: 50,
 				// bearing: 74.5,
 			}}
 			maxBounds={[
@@ -332,26 +314,24 @@ function MyMap({
 				width: "100%",
 				height: "100%",
 			}}
-			mapStyle="https://tiles.openfreemap.org/styles/bright"
+			// mapStyle="https://tiles.openfreemap.org/styles/positron"
+			mapStyle="https://tiles.openfreemap.org/styles/positron"
 		>
-			{boothCollection && (
-				<Source id="floor" type="geojson" data={boothCollection}>
+			{roofCollection && (
+				<Source id="floor" type="geojson" data={roofCollection}>
 					<Layer
-						id="floor-extrusion"
+						id="roof-layer"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#FFFFE0", // Light beige
-							// Set floor height
-							"fill-extrusion-height": 2,
-							// Start at base level
-							"fill-extrusion-base": 0,
-							// Add slight opacity
+							"fill-extrusion-color": "#DCDCDC",
+							"fill-extrusion-height": 1,
+							"fill-extrusion-base": 1,
 							"fill-extrusion-opacity": 1,
 							"fill-extrusion-vertical-gradient": true,
 						}}
 					/>
 					<Layer
-						id="booth-label"
+						id="booth-label-layer"
 						type="symbol"
 						layout={{
 							"text-field": ["get", "label"],
@@ -370,12 +350,23 @@ function MyMap({
 			{wallCollection && (
 				<Source id="wall" type="geojson" data={wallCollection}>
 					<Layer
-						id="wall-3d-extrusion"
+						id="wall-layer1"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#dddddd", // Light gray for walls
-							"fill-extrusion-height": 2, // Wall height (taller than floors)
-							"fill-extrusion-base": 0, // Start from floor height
+							"fill-extrusion-color": "#e9e9e9",
+							"fill-extrusion-height": 1,
+							"fill-extrusion-base": 0,
+							"fill-extrusion-opacity": 0.6,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					/>
+					<Layer
+						id="wall-layer2"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#989898",
+							"fill-extrusion-height": 1,
+							"fill-extrusion-base": 1,
 							"fill-extrusion-opacity": 1,
 							"fill-extrusion-vertical-gradient": true,
 						}}
