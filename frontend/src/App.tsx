@@ -9,7 +9,10 @@ export interface SearchBoxProps {
 	setActiveOverlay: React.Dispatch<
 		React.SetStateAction<"searchbox" | "popup" | null>
 	>;
-	onBoothSelect: (coords: { lng: number; lat: number }, which: string) => void;
+	onBoothSelect: (
+		coords: { lng: number; lat: number },
+		which: "origin" | "dest",
+	) => void;
 	doors: FeatureCollection<Point>;
 }
 export interface MyMapProps {
@@ -19,7 +22,7 @@ export interface MyMapProps {
 	>;
 	handleBoothSelect: (
 		coords: { lng: number; lat: number },
-		which: string,
+		which: "origin" | "dest",
 	) => void;
 
 	origin: { lng: number; lat: number };
@@ -231,8 +234,6 @@ function MyMap({
 	doorPointCollection,
 	origin,
 	dest,
-	setOrigin,
-	setDest,
 }: MyMapProps) {
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
 	const [path, setPath] = useState(null);
@@ -423,7 +424,10 @@ function MyMap({
 							className="mt-4 w-full rounded-lg bg-amber-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
 							type="button"
 							onClick={() => {
-								setOrigin({ lng: popupCoord.lng, lat: popupCoord.lat });
+								handleBoothSelect(
+									{ lng: popupCoord.lng, lat: popupCoord.lat },
+									"origin",
+								);
 								setPopupCoord(undefined);
 							}}
 						>
@@ -433,7 +437,10 @@ function MyMap({
 							className="mt-1 w-full rounded-lg bg-teal-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-teal-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
 							type="button"
 							onClick={() => {
-								setDest({ lng: popupCoord.lng, lat: popupCoord.lat });
+								handleBoothSelect(
+									{ lng: popupCoord.lng, lat: popupCoord.lat },
+									"dest",
+								);
 								setPopupCoord(undefined);
 							}}
 						>
@@ -443,7 +450,7 @@ function MyMap({
 				</Popup>
 			)}
 			<Marker
-				onDragEnd={(e) => handleBoothSelect(e.lngLat, "start")}
+				onDragEnd={(e) => handleBoothSelect(e.lngLat, "origin")}
 				color="green"
 				longitude={origin.lng}
 				latitude={origin.lat}
@@ -453,7 +460,7 @@ function MyMap({
 				<img className="h-10" src="./start.png" alt="humanoid" />
 			</Marker>
 			<Marker
-				onDragEnd={(e) => handleBoothSelect(e.lngLat, "finish")}
+				onDragEnd={(e) => handleBoothSelect(e.lngLat, "dest")}
 				color="red"
 				longitude={dest.lng}
 				latitude={dest.lat}
@@ -477,7 +484,9 @@ function SearchBox({
 	);
 	const [originSearchTerm, setOriginSearchTerm] = useState<string | null>(null);
 	const [destSearchTerm, setDestSearchTerm] = useState<string | null>(null);
-	const [focusedSearchbox, setFocusedSearchbox] = useState<string | null>(null);
+	const [focusedSearchbox, setFocusedSearchbox] = useState<
+		"origin" | "dest" | null
+	>(null);
 	const originSearchboxRef = useRef<HTMLInputElement | null>(null);
 	const destSearchboxRef = useRef<HTMLInputElement | null>(null);
 
