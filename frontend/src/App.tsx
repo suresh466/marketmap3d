@@ -60,7 +60,7 @@ import { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import type { LngLat, MapLayerMouseEvent } from "react-map-gl/maplibre";
+import type { LngLat, MapLayerMouseEvent, MapRef } from "react-map-gl/maplibre";
 import {
 	AttributionControl,
 	Layer,
@@ -237,6 +237,7 @@ function MyMap({
 }: MyMapProps) {
 	const [popupCoord, setPopupCoord] = useState<LngLat>();
 	const [path, setPath] = useState(null);
+	const mapRef = useRef<MapRef>(null);
 
 	useEffect(() => {
 		if (activeOverlay !== "popup") setPopupCoord(undefined);
@@ -289,6 +290,13 @@ function MyMap({
 
 	return (
 		<M
+			ref={mapRef}
+			onLoad={() => {
+				mapRef.current?.fitBounds([
+					[-79.36003227, 43.81250021],
+					[-79.3585528, 43.813410058],
+				]);
+			}}
 			attributionControl={false}
 			doubleClickZoom={false}
 			interactiveLayerIds={["floormap-extrusion"]}
