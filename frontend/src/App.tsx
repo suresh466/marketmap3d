@@ -40,6 +40,7 @@ import "./App.css";
 import {
 	booleanPointInPolygon,
 	buffer,
+	center,
 	explode,
 	featureCollection,
 	nearestPoint,
@@ -130,10 +131,6 @@ function App() {
 			const floorplanCollection = await response.json();
 			const walkwayCollection = await response_walkways.json();
 
-			const floorFeatures = buffer(floorplanCollection, 0.1, {
-				units: "meters",
-			}) as unknown as FeatureCollection<Polygon>;
-
 			const roofFeatures = buffer(floorplanCollection, -0.1, {
 				units: "meters",
 			}) as unknown as FeatureCollection<Polygon>;
@@ -147,7 +144,7 @@ function App() {
 				units: "meters",
 			}) as unknown as FeatureCollection<Polygon>;
 
-			setFloorCollection(floorFeatures);
+			setFloorCollection(floorplanCollection);
 			setRoofCollection(roofFeatures);
 			setWallCollection(wallFeatures);
 			setWalkwayCollection(walkwayCollection);
@@ -159,6 +156,22 @@ function App() {
 		coords: { lng: number; lat: number },
 		which: string,
 	) {
+		if (!floorCollection) return;
+
+		const boothCenterCollection = featureCollection(
+			floorCollection.features.map((booth) =>
+				center(booth, { id: booth.properties?.id }),
+			),
+		);
+		const nearestBooth = nearestPoint(
+			point([coords.lng, coords.lat]),
+			boothCenterCollection,
+		);
+		coords = {
+			lng: nearestBooth.geometry.coordinates[0],
+			lat: nearestBooth.geometry.coordinates[1],
+		};
+
 		which === "origin" ? setOrigin(coords) : setDest(coords);
 	}
 
@@ -246,7 +259,7 @@ function MyMap({
 	useEffect(() => {
 		if (!walkwayCollection) return;
 
-		const startPoint: Feature<Point> = {
+		const originPoint: Feature<Point> = {
 			type: "Feature",
 			id: 1,
 			geometry: {
@@ -256,7 +269,7 @@ function MyMap({
 			properties: {},
 		};
 
-		const finishPoint: Feature<Point> = {
+		const destPoint: Feature<Point> = {
 			type: "Feature",
 			id: 2,
 			geometry: {
@@ -267,8 +280,8 @@ function MyMap({
 		};
 
 		const walkwayPoints = explode(walkwayCollection);
-		const nearestStartPoint = nearestPoint(startPoint, walkwayPoints);
-		const nearestFinishPoint = nearestPoint(finishPoint, walkwayPoints);
+		const nearestStartPoint = nearestPoint(originPoint, walkwayPoints);
+		const nearestFinishPoint = nearestPoint(destPoint, walkwayPoints);
 
 		const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
 		const path = pathFinder.findPath(nearestStartPoint, nearestFinishPoint);
@@ -462,7 +475,7 @@ function MyMap({
 				color="green"
 				longitude={origin.lng}
 				latitude={origin.lat}
-				anchor="center"
+				anchor="bottom"
 				draggable={true}
 			>
 				<img className="h-10" src="./start.png" alt="humanoid" />
