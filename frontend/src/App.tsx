@@ -158,20 +158,31 @@ function App() {
 	) {
 		if (!floorCollection) return;
 
-		const boothCenterCollection = featureCollection(
-			floorCollection.features.map((booth) =>
-				center(booth, { id: booth.properties?.id }),
-			),
-		);
-		const nearestBooth = nearestPoint(
-			point([coords.lng, coords.lat]),
-			boothCenterCollection,
-		);
-		coords = {
-			lng: nearestBooth.geometry.coordinates[0],
-			lat: nearestBooth.geometry.coordinates[1],
-		};
+		let nearestBoothCenter = null;
 
+		for (const booth of floorCollection.features) {
+			if (booleanPointInPolygon(point([coords.lng, coords.lat]), booth)) {
+				nearestBoothCenter = center(booth);
+				break;
+			}
+		}
+
+		if (!nearestBoothCenter) {
+			const boothCenterCollection = featureCollection(
+				floorCollection.features.map((booth) =>
+					center(booth, { id: booth.properties?.id }),
+				),
+			);
+			nearestBoothCenter = nearestPoint(
+				point([coords.lng, coords.lat]),
+				boothCenterCollection,
+			);
+		}
+
+		coords = {
+			lng: nearestBoothCenter.geometry.coordinates[0],
+			lat: nearestBoothCenter.geometry.coordinates[1],
+		};
 		which === "origin" ? setOrigin(coords) : setDest(coords);
 	}
 
