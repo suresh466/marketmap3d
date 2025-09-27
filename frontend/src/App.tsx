@@ -316,7 +316,6 @@ function MyMap({
 				]);
 			}}
 			attributionControl={false}
-			doubleClickZoom={false}
 			interactiveLayerIds={["floormap-extrusion"]}
 			onClick={(e) => handleMapClick(e)}
 			initialViewState={{
@@ -494,7 +493,7 @@ function MyMap({
 				draggable={true}
 			></Marker>
 			<AttributionControl position="bottom-left" />
-			<NavControlWithFitBounds showZoom={false} position="bottom-right" />
+			<NavControlWithFitBounds position="bottom-right" />
 		</M>
 	);
 }
