@@ -40,7 +40,6 @@ import "./App.css";
 import {
 	booleanPointInPolygon,
 	buffer,
-	center,
 	explode,
 	featureCollection,
 	nearestPoint,
@@ -156,32 +155,27 @@ function App() {
 		coords: { lng: number; lat: number },
 		which: string,
 	) {
-		if (!floorCollection) return;
-
-		let nearestBoothCenter = null;
+		if (!floorCollection || !doorPointCollection) return;
+		let nearestDoor = null;
 
 		for (const booth of floorCollection.features) {
 			if (booleanPointInPolygon(point([coords.lng, coords.lat]), booth)) {
-				nearestBoothCenter = center(booth);
+				nearestDoor = doorPointCollection?.features.find(
+					(b) => b.properties?.id === booth.properties?.id,
+				);
 				break;
 			}
 		}
-
-		if (!nearestBoothCenter) {
-			const boothCenterCollection = featureCollection(
-				floorCollection.features.map((booth) =>
-					center(booth, { id: booth.properties?.id }),
-				),
-			);
-			nearestBoothCenter = nearestPoint(
+		if (!nearestDoor) {
+			nearestDoor = nearestPoint(
 				point([coords.lng, coords.lat]),
-				boothCenterCollection,
+				doorPointCollection,
 			);
 		}
 
 		coords = {
-			lng: nearestBoothCenter.geometry.coordinates[0],
-			lat: nearestBoothCenter.geometry.coordinates[1],
+			lng: nearestDoor.geometry.coordinates[0],
+			lat: nearestDoor.geometry.coordinates[1],
 		};
 		which === "origin" ? setOrigin(coords) : setDest(coords);
 	}
