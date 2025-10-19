@@ -125,7 +125,7 @@ function App() {
 		async function processFeatures() {
 			const response = await fetch("/floorplan.geojson");
 			const response_walkways = await fetch(
-				"../public/walkway-connected-complete-single.geojson",
+				"../walkway-connected-complete-single.geojson",
 			);
 			const floorplanCollection = await response.json();
 			const walkwayCollection = await response_walkways.json();
