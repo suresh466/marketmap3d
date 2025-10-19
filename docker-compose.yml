@@ -1,0 +1,18 @@
+services:
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    # depends_on:
+    #   backend:
+    #     condition: service_healthy
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # mount Certbot certificates (read-only)
+      # - /etc/ssl/marketmap.club:/etc/ssl/marketmap.club # Mount SSL certs
+      - nginx_logs:/var/log/nginx
+
+volumes:
+  nginx_logs:

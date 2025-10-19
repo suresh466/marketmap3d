@@ -338,7 +338,7 @@ function MyMap({
 			mapStyle="https://tiles.openfreemap.org/styles/positron"
 		>
 			{roofCollection && (
-				<Source id="floor" type="geojson" data={roofCollection}>
+				<Source id="roof" type="geojson" data={roofCollection}>
 					<Layer
 						id="roof-layer"
 						type="fill-extrusion"
