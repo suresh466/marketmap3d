@@ -482,7 +482,7 @@ function MyMap({
 				anchor="bottom"
 				draggable={true}
 			>
-				<img className="h-10" src="./start.png" alt="humanoid" />
+				<img className="h-10" src="./start-512.png" alt="humanoid" />
 			</Marker>
 			<Marker
 				onDragEnd={(e) => handleBoothSelect(e.lngLat, "dest")}
