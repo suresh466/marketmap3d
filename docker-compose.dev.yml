@@ -1,0 +1,7 @@
+services:
+  frontend:
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf # mount the config file for dev
+      - ./frontend/testcerts:/etc/letsencrypt:ro  # mount test certs (read-only)
+      - ./frontend/dist:/usr/share/nginx/html # mount build files for dev
+      - nginx_logs:/var/log/nginx
