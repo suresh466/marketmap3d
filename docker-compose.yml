@@ -1,5 +1,6 @@
 services:
   frontend:
+    container_name: marketmap3d-frontend
     build: ./frontend
     restart: unless-stopped
     ports:
