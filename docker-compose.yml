@@ -9,7 +9,8 @@ services:
     #   backend:
     #     condition: service_healthy
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro  # mount Certbot certificates (read-only)
+      - /etc/letsencrypt:/etc/letsencrypt:ro # mount Certbot certificates (read-only)
+      - /var/www/certbot:/var/www/certbot:ro # for webroot challenge
       - nginx_logs:/var/log/nginx
 
 volumes:
