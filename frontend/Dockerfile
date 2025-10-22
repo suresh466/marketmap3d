@@ -21,6 +21,8 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=build-env /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN mkdir -p /etc/nginx/snippets # for dev docker containers mount to work
+COPY nginx-snippets/ /etc/nginx/snippets/
 
 EXPOSE 80
 EXPOSE 443
