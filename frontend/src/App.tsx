@@ -322,7 +322,7 @@ function MyMap({
 				longitude: -79.35929253500002,
 				latitude: 43.81295513573272,
 				zoom: 18,
-				pitch: 50,
+				// pitch: 50,
 				// bearing: 74.5,
 			}}
 			maxBounds={[
