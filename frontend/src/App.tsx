@@ -30,6 +30,7 @@ export interface MyMapProps {
 	roofCollection: FeatureCollection<Polygon> | null;
 	floorCollection: FeatureCollection<Polygon> | null;
 	walkwayCollection: FeatureCollection<LineString> | null;
+	entranceCollection: FeatureCollection<Polygon> | null;
 	wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
 	doorPointCollection: FeatureCollection<Point> | null;
 	setOrigin: React.Dispatch<React.SetStateAction<{ lng: number; lat: number }>>;
@@ -76,6 +77,8 @@ function App() {
 		"popup" | "searchbox" | null
 	>(null);
 
+	const [entranceCollection, setEntranceCollection] =
+		useState<FeatureCollection<Polygon> | null>(null);
 	const [roofCollection, setRoofCollection] =
 		useState<FeatureCollection<Polygon> | null>(null);
 	const [floorCollection, setFloorCollection] =
@@ -127,8 +130,11 @@ function App() {
 			const response_walkways = await fetch(
 				"/walkway-connected-complete-single.geojson",
 			);
+			const response_entrance = await fetch("/entrance.geojson");
+
 			const floorplanCollection = await response.json();
 			const walkwayCollection = await response_walkways.json();
+			const entranceCollection = await response_entrance.json();
 
 			const roofFeatures = buffer(floorplanCollection, -0.1, {
 				units: "meters",
@@ -147,6 +153,7 @@ function App() {
 			setRoofCollection(roofFeatures);
 			setWallCollection(wallFeatures);
 			setWalkwayCollection(walkwayCollection);
+			setEntranceCollection(entranceCollection);
 		}
 		processFeatures();
 	}, []);
@@ -190,6 +197,7 @@ function App() {
 				doorPointCollection={doorPointCollection}
 				roofCollection={roofCollection}
 				walkwayCollection={walkwayCollection}
+				entranceCollection={entranceCollection}
 				wallCollection={wallCollection}
 				origin={origin}
 				dest={dest}
@@ -248,6 +256,7 @@ function MyMap({
 	setActiveOverlay,
 	roofCollection,
 	walkwayCollection,
+	entranceCollection,
 	wallCollection,
 	doorPointCollection,
 	origin,
@@ -337,6 +346,37 @@ function MyMap({
 			// mapStyle="https://tiles.openfreemap.org/styles/positron"
 			mapStyle="https://tiles.openfreemap.org/styles/positron"
 		>
+			{entranceCollection && (
+				<Source id="entrance" type="geojson" data={entranceCollection}>
+					<Layer
+						id="entrance-layer"
+						type="fill-extrusion"
+						paint={{
+							"fill-extrusion-color": "#e9e9e9",
+							"fill-extrusion-height": 3,
+							"fill-extrusion-base": 0,
+							"fill-extrusion-opacity": 0.6,
+							"fill-extrusion-vertical-gradient": true,
+						}}
+					></Layer>
+					<Layer
+						id="entrance-label-layer"
+						type="symbol"
+						layout={{
+							"text-field": ["get", "label"],
+							"text-font": ["Noto Sans Regular"],
+							"text-size": 14,
+							"text-anchor": "center",
+						}}
+						paint={{
+							"text-color": "#000000",
+							"text-halo-color": "#ffffff",
+							"text-halo-width": 1,
+						}}
+					/>
+				</Source>
+			)}
+
 			{roofCollection && (
 				<Source id="roof" type="geojson" data={roofCollection}>
 					<Layer
