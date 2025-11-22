@@ -352,7 +352,7 @@ function MyMap({
 						id="entrance-layer"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#e9e9e9",
+							"fill-extrusion-color": "#fbb52b",
 							"fill-extrusion-height": 3,
 							"fill-extrusion-base": 0,
 							"fill-extrusion-opacity": 0.6,
