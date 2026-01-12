@@ -1,14 +1,10 @@
 services:
   frontend:
-    container_name: marketmap3d-frontend
     build: ./frontend
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-    # depends_on:
-    #   backend:
-    #     condition: service_healthy
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro # mount Certbot certificates (read-only)
       - /var/www/certbot:/var/www/certbot:ro # for webroot challenge
