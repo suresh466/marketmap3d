@@ -17,3 +17,9 @@ services:
           # Triggering the watch by saving the file works at this point, but its a hack really.
         - path: ./frontend/nginx-snippets/security-headers.conf
           action: restart
+        - path: ./frontend/src/
+          action: rebuild
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/package-lock.json
+          action: rebuild
