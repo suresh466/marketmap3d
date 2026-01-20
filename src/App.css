@@ -1,6 +1,21 @@
 #root {
-	margin: 0;
-	padding: 0;
-	width: 100%;
-	height: 100%;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+   Scoped override for MapLibre popup.
+   Use a specific class (.tailwind-popup) so other standard popups dont break if we add them later.
+*/
+.tailwind-popup .maplibregl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.tailwind-popup .maplibregl-popup-tip {
+  display: none !important;
 }

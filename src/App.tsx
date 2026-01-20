@@ -205,7 +205,7 @@ function App() {
 				setDest={setDest}
 			></MyMap>
 			{/* searchbox */}
-			<div className="absolute inset-x-4 top-2 z-20 md:inset-auto md:left-6 md:top-6 md:w-1/4">
+			<div className="absolute top-2 inset-x-4 z-20 md:top-6 md:left-6 md:inset-auto md:w-1/4">
 				{doorPointCollection && (
 					<SearchBox
 						activeOverlay={activeOverlay}
@@ -352,7 +352,7 @@ function MyMap({
 						id="entrance-layer"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#fbb52b",
+							"fill-extrusion-color": "#fb2c36",
 							"fill-extrusion-height": 3,
 							"fill-extrusion-base": 0,
 							"fill-extrusion-opacity": 0.6,
@@ -467,6 +467,7 @@ function MyMap({
 			)}
 			{popupCoord && (
 				<Popup
+					className="tailwind-popup"
 					closeButton={false}
 					closeOnMove={true}
 					focusAfterOpen={false}
@@ -475,18 +476,9 @@ function MyMap({
 					latitude={popupCoord.lat}
 					onClose={() => setPopupCoord(undefined)}
 				>
-					<div className="flex flex-col">
-						{/* Custom close button */}
+					<div className="flex flex-col gap-1 py-1 rounded-xl border shadow-black/25 shadow-[2px_2px_8px] backdrop-blur-lg border-white/90 bg-gray-300/10">
 						<button
-							className="absolute -right-1 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-all duration-200 hover:bg-red-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1"
-							onClick={() => setPopupCoord(undefined)}
-							aria-label="Close popup"
-							type="button"
-						>
-							<span className="text-xs font-bold">×</span>
-						</button>
-						<button
-							className="mt-4 w-full rounded-lg bg-amber-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
+							className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-slate-300 border-white/60"
 							type="button"
 							onClick={() => {
 								handleBoothSelect(
@@ -499,7 +491,7 @@ function MyMap({
 							Im here
 						</button>
 						<button
-							className="mt-1 w-full rounded-lg bg-teal-500 px-6 py-2 text-xs font-extrabold text-white transition-colors duration-200 hover:bg-teal-600 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-2"
+							className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-red-500/50 border-white/60"
 							type="button"
 							onClick={() => {
 								handleBoothSelect(
@@ -613,7 +605,7 @@ function SearchBox({
 			{focusedSearchbox === null ? (
 				// dummy searchbox
 				<input
-					className="placeholder:font-medium  w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pl-10 text-gray-700 placeholder-gray-500 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+					className="py-3 px-4 pl-10 w-full placeholder-gray-500 text-gray-700 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:outline-none placeholder:font-medium focus:ring-amber-500/50"
 					readOnly
 					value={destSearchTerm?.toUpperCase() || ""}
 					id="boothsSearchDummy"
@@ -631,12 +623,12 @@ function SearchBox({
 					}}
 				/>
 			) : (
-				<div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+				<div className="flex overflow-hidden flex-col bg-white rounded-lg border border-gray-200 shadow-lg">
 					{/* origin searchbox */}
-					<div className="border-b border-gray-100 p-4">
+					<div className="p-4 border-b border-gray-100">
 						<input
 							type="search"
-							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+							className="py-2.5 px-4 w-full placeholder-gray-400 text-gray-700 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:outline-none focus:ring-amber-500/50"
 							value={originSearchTerm || ""}
 							ref={originSearchboxRef}
 							id="boothsSearch"
@@ -653,10 +645,10 @@ function SearchBox({
 					</div>
 
 					{/* dest searchbox */}
-					<div className="border-b border-gray-100 p-4">
+					<div className="p-4 border-b border-gray-100">
 						<input
 							type="search"
-							className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-700 placeholder-gray-400 transition-all duration-200 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+							className="py-2.5 px-4 w-full placeholder-gray-400 text-gray-700 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:outline-none focus:ring-amber-500/50"
 							value={destSearchTerm || ""}
 							ref={destSearchboxRef}
 							id="destBoothsSearch"
@@ -668,7 +660,7 @@ function SearchBox({
 						/>
 					</div>
 
-					<ul className="max-h-[60vh] overflow-y-auto scroll-smooth divide-y divide-gray-100">
+					<ul className="overflow-y-auto divide-y divide-gray-100 max-h-[60vh] scroll-smooth">
 						{filteredBooths?.map((booth) => {
 							if (!booth.properties?.label) return null;
 							return (
