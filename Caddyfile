@@ -14,9 +14,9 @@ http://localhost {
 	# }
 	# abort @excessive
 
-	file_server
 	# SPA Routing: Try file, then directory, then index.html
 	try_files {path} {path}/ /index.html
+	file_server
 
 	# --- Security Headers (Global) ---
 	header {

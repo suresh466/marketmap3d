@@ -14,9 +14,9 @@
 
 1. **Start with Docker Compose**:
 
-```bash
-docker compose --env-file env.dev up
-```
+   ```bash
+   docker compose --env-file env.dev up
+   ```
 
 The application will be available at `http://localhost:5173`
 

@@ -20,5 +20,6 @@ RUN npm run build
 # Stage 4: Serve the app with Caddy
 FROM caddy:alpine
 EXPOSE 80
+EXPOSE 443
 COPY --from=build-env /app/dist /srv/dist
 COPY Caddyfile /etc/caddy/Caddyfile
