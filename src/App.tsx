@@ -376,6 +376,8 @@ function MyMap({
 							"text-padding": 2,
 							"text-transform": "uppercase",
 							"text-letter-spacing": 0.05,
+							"text-pitch-alignment": "viewport",
+							"text-rotation-alignment": "viewport",
 						}}
 						paint={{
 							"text-color": "#333333",
@@ -400,10 +402,10 @@ function MyMap({
 						id="roof-layer"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#DCDCDC",
-							"fill-extrusion-height": 1,
+							"fill-extrusion-color": "#cbd5e1",
+							"fill-extrusion-height": 1.2,
 							"fill-extrusion-base": 1,
-							"fill-extrusion-opacity": 1,
+							"fill-extrusion-opacity": 0.5,
 							"fill-extrusion-vertical-gradient": true,
 						}}
 					/>
@@ -424,6 +426,8 @@ function MyMap({
 							"text-padding": 2,
 							"text-transform": "uppercase",
 							"text-letter-spacing": 0.05,
+							"text-pitch-alignment": "viewport",
+							"text-rotation-alignment": "viewport",
 						}}
 						paint={{
 							"text-color": "#333333",
@@ -447,10 +451,10 @@ function MyMap({
 						id="wall-layer1"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#e9e9e9",
+							"fill-extrusion-color": "#94a3b8",
 							"fill-extrusion-height": 1,
 							"fill-extrusion-base": 0,
-							"fill-extrusion-opacity": 0.6,
+							"fill-extrusion-opacity": 0.8,
 							"fill-extrusion-vertical-gradient": true,
 						}}
 					/>
@@ -458,7 +462,7 @@ function MyMap({
 						id="wall-layer2"
 						type="fill-extrusion"
 						paint={{
-							"fill-extrusion-color": "#989898",
+							"fill-extrusion-color": "#64748b",
 							"fill-extrusion-height": 1,
 							"fill-extrusion-base": 1,
 							"fill-extrusion-opacity": 1,
