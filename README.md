@@ -2,45 +2,23 @@
 
 3D indoor mapping and navigation system designed for flea markets
 
-## Development
+## 📦 Getting Started
 
-### Quick Start
+### Using docker
 
-```bash
-npm install && npm run dev
-```
+1. **Clone the repository**:
 
-### Local Development
+   ```bash
+   git clone https://github.com/suresh466/marketmap3d.git && cd marketmap3d
+   ```
 
-```bash
-npm run dev
-```
-
-Run the development server without Docker:
-
-### Development with Docker + Nginx
+1. **Start with Docker Compose**:
 
 ```bash
-docker compose -p marketmap3d-dev -f docker-compose.yml -f docker-compose-dev.yml up --watch
+docker compose --env-file env.dev up
 ```
 
-Runs the app inside a Docker container behind Nginx. Use this to test Nginx config (SSL, headers, cache etc.)
-
-The `-p` flag namespaces the dev container and `--watch` flag automatically syncs file changes and restarts services when configuration files are modified.
-
-### Production
-
-```bash
-docker compose up -d
-```
-
-Build and run the application in detached mode with production optimizations enabled.
-
-## Notes
-
-- Test certificates are located in `testcerts/`
-- Nginx configuration files are in `nginx-snippets/` and `nginx.conf`
-- Logs are persisted in the `nginx_logs` volume
+The application will be available at `http://localhost:5173`
 
 ## Todo
 

@@ -17,13 +17,8 @@ COPY --from=development-dependencies-env /app/node_modules /app/node_modules
 WORKDIR /app
 RUN npm run build
 
-# Stage 4: Serve the app with Nginx
-FROM nginx:alpine
-COPY --from=build-env /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-RUN mkdir -p /etc/nginx/snippets # for dev docker containers mount to work
-COPY nginx-snippets/ /etc/nginx/snippets/
-
+# Stage 4: Serve the app with Caddy
+FROM caddy:alpine
 EXPOSE 80
-EXPOSE 443
-CMD ["nginx", "-g", "daemon off;"]
+COPY --from=build-env /app/dist /srv/dist
+COPY Caddyfile /etc/caddy/Caddyfile

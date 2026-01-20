@@ -3,12 +3,11 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "80:80"
+      - ${CADDY_PORT}:80
       - "443:443"
+      - "443:443/udp"
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro # mount Certbot certificates (read-only)
-      - /var/www/certbot:/var/www/certbot:ro # for webroot challenge
-      - nginx_logs:/var/log/nginx
+      - caddy_data:/data
 
 volumes:
-  nginx_logs:
+  caddy_data:

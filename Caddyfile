@@ -1,0 +1,74 @@
+{
+	# Global options
+	# email your-email@example.com # Optional: for Let's Encrypt notifications
+}
+
+http://localhost {
+	root * /srv/dist
+	encode gzip zstd
+
+	# --- Bot Protection (Optional) ---
+	# Uncomment to block common bots/scrapers
+	# @excessive {
+	# 	header_regexp User-Agent "bot|scraper|crawler|spider"
+	# }
+	# abort @excessive
+
+	file_server
+	# SPA Routing: Try file, then directory, then index.html
+	try_files {path} {path}/ /index.html
+
+	# --- Security Headers (Global) ---
+	header {
+		# Remove Server header for security
+		-Server
+
+		# Clickjacking protection
+		X-Frame-Options "SAMEORIGIN"
+		# Prevent MIME type sniffing
+		X-Content-Type-Options "nosniff"
+		# Referrer policy
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Permissions Policy - restricts browser features
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+		# Force HTTPS (HSTS) - 1 year
+		#Strict-Transport-Security "max-age=31536000"
+		# Content Security Policy (Tailored for Vite + MapLibre)
+		# Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://tiles.openfreemap.org; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self';"
+	}
+
+	# --- Caching & MIME Types (Conditional) ---
+
+	# JS and CSS (Hashed - Long term cache)
+	# Only cache files in /assets/ because Vite hashes them.
+	# Loose JS files in root (if any) won't get stuck in cache.
+	@hashed path /assets/*.js /assets/*.css
+	header @hashed {
+		Cache-Control "public, immutable, max-age=31536000"
+	}
+
+	# GeoJSON (Medium term cache + Content-Type)
+	@geojson path *.geojson
+	header @geojson {
+		Cache-Control "public, max-age=3600"
+		Content-Type "application/geo+json"
+	}
+
+	# Images and Fonts (Medium term cache)
+	@assets path *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf *.eot *.webp *.avif
+	header @assets {
+		Cache-Control "public, max-age=2592000"
+	}
+
+	# HTML (No cache - ensures users get latest index.html)
+	@html path *.html
+	header @html {
+		Cache-Control "no-cache"
+	}
+
+	# Logging (to stdout, Caddy standard)
+	log {
+		output stdout
+		format console
+	}
+}
