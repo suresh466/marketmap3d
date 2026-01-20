@@ -365,14 +365,31 @@ function MyMap({
 						layout={{
 							"text-field": ["get", "label"],
 							"text-font": ["Noto Sans Regular"],
-							"text-size": 14,
+							"text-size": [
+								"interpolate",
+								["linear"],
+								["zoom"],
+								19, 10,
+								22, 16
+							],
 							"text-anchor": "center",
+							"text-padding": 2,
+							"text-transform": "uppercase",
+							"text-letter-spacing": 0.05,
 						}}
 						paint={{
-							"text-color": "#000000",
-							"text-halo-color": "#ffffff",
-							"text-halo-width": 1,
+							"text-color": "#333333",
+							"text-halo-color": "rgba(255, 255, 255, 0.9)",
+							"text-halo-width": 1.5,
+							"text-opacity": [
+								"interpolate",
+								["linear"],
+								["zoom"],
+								18.5, 0,
+								19, 1
+							]
 						}}
+						minzoom={19}
 					/>
 				</Source>
 			)}
@@ -396,14 +413,31 @@ function MyMap({
 						layout={{
 							"text-field": ["get", "label"],
 							"text-font": ["Noto Sans Regular"],
-							"text-size": 14,
+							"text-size": [
+								"interpolate",
+								["linear"],
+								["zoom"],
+								19, 10,
+								22, 16
+							],
 							"text-anchor": "center",
+							"text-padding": 2,
+							"text-transform": "uppercase",
+							"text-letter-spacing": 0.05,
 						}}
 						paint={{
-							"text-color": "#000000",
-							"text-halo-color": "#ffffff",
-							"text-halo-width": 1,
+							"text-color": "#333333",
+							"text-halo-color": "rgba(255, 255, 255, 0.9)",
+							"text-halo-width": 1.5,
+							"text-opacity": [
+								"interpolate",
+								["linear"],
+								["zoom"],
+								18.5, 0,
+								19, 1
+							]
 						}}
+						minzoom={19}
 					/>
 				</Source>
 			)}
