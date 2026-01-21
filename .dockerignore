@@ -1,0 +1,7 @@
+# Exclude the project virtual environment from image builds
+.git
+.gitignore
+.gitattributes
+.env
+dist/
+node_modules
