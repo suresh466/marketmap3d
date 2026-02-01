@@ -66,9 +66,13 @@ http://localhost {
 		Cache-Control "no-cache"
 	}
 
-	# Logging (to stdout, Caddy standard)
+	# Access & error logging to stdout and file
 	log {
 		output stdout
 		format console
+	}
+	log {
+		output file /data/access.log
+		format json
 	}
 }

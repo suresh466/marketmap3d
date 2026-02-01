@@ -12,9 +12,9 @@ An interactive 3D indoor mapping and navigation system designed for complex spac
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React 19, TypeScript, Tailwind CSS v4
+- **Frontend:** React, TypeScript, Tailwind CSS
 - **Mapping & Geospatial:** [MapLibre GL](https://maplibre.org/), [React Map GL](https://visgl.github.io/react-map-gl/), [Turf.js](https://turfjs.org/)
-- **Build & Tooling:** Vite, Biome, ESLint
+- **Build & Tooling:** Vite, Biome
 - **Infrastructure:** Docker, Docker Compose, Caddy Web Server
 
 ## 📦 Getting Started
@@ -54,6 +54,7 @@ An interactive 3D indoor mapping and navigation system designed for complex spac
 ## 🗺️ Data Structure
 
 The application relies on GeoJSON data for rendering the map:
+
 - `floorplan.geojson`: Defines the booth layouts and base structures.
 - `walkway-connected-complete-single.geojson`: Defines the walkable paths for the routing engine.
 - `entrance.geojson`: Defines entry/exit points.
@@ -61,3 +62,4 @@ The application relies on GeoJSON data for rendering the map:
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
