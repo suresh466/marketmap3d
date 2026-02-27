@@ -28,13 +28,10 @@ export interface MyMapProps {
   origin: { lng: number; lat: number };
   dest: { lng: number; lat: number };
   roofCollection: FeatureCollection<Polygon> | null;
-  floorCollection: FeatureCollection<Polygon> | null;
   walkwayCollection: FeatureCollection<LineString> | null;
   entranceCollection: FeatureCollection<Polygon> | null;
   wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
   doorPointCollection: FeatureCollection<Point> | null;
-  setOrigin: React.Dispatch<React.SetStateAction<{ lng: number; lat: number }>>;
-  setDest: React.Dispatch<React.SetStateAction<{ lng: number; lat: number }>>;
 }
 
 import "./App.css";
@@ -193,7 +190,6 @@ function App() {
         handleBoothSelect={handleBoothSelect}
         activeOverlay={activeOverlay}
         setActiveOverlay={setActiveOverlay}
-        floorCollection={floorCollection}
         doorPointCollection={doorPointCollection}
         roofCollection={roofCollection}
         walkwayCollection={walkwayCollection}
@@ -201,8 +197,6 @@ function App() {
         wallCollection={wallCollection}
         origin={origin}
         dest={dest}
-        setOrigin={setOrigin}
-        setDest={setDest}
       ></MyMap>
       {/* searchbox */}
       <div className="absolute top-2 inset-x-4 z-20 md:top-6 md:left-6 md:inset-auto md:w-1/4">
@@ -356,7 +350,6 @@ function MyMap({
               "fill-extrusion-height": 3,
               "fill-extrusion-base": 0,
               "fill-extrusion-opacity": 0.6,
-              "fill-extrusion-vertical-gradient": true,
             }}
           ></Layer>
           <Layer
@@ -407,10 +400,9 @@ function MyMap({
             type="fill-extrusion"
             paint={{
               "fill-extrusion-color": "#cbd5e1",
-              "fill-extrusion-height": 1.2,
-              "fill-extrusion-base": 1,
+              "fill-extrusion-height": 0.4,
+              "fill-extrusion-base": 0,
               "fill-extrusion-opacity": 0.5,
-              "fill-extrusion-vertical-gradient": true,
             }}
           />
           <Layer
@@ -456,25 +448,13 @@ function MyMap({
       {wallCollection && (
         <Source id="wall" type="geojson" data={wallCollection}>
           <Layer
-            id="wall-layer1"
+            id="wall-layer"
             type="fill-extrusion"
             paint={{
               "fill-extrusion-color": "#94a3b8",
-              "fill-extrusion-height": 1,
+              "fill-extrusion-height": 0.4,
               "fill-extrusion-base": 0,
-              "fill-extrusion-opacity": 0.8,
-              "fill-extrusion-vertical-gradient": true,
-            }}
-          />
-          <Layer
-            id="wall-layer2"
-            type="fill-extrusion"
-            paint={{
-              "fill-extrusion-color": "#64748b",
-              "fill-extrusion-height": 1,
-              "fill-extrusion-base": 1,
               "fill-extrusion-opacity": 1,
-              "fill-extrusion-vertical-gradient": true,
             }}
           />
         </Source>
