@@ -27,7 +27,7 @@ export interface MyMapProps {
 
   origin: { lng: number; lat: number };
   dest: { lng: number; lat: number };
-  roofCollection: FeatureCollection<Polygon> | null;
+  boothCollection: FeatureCollection<Polygon> | null;
   walkwayCollection: FeatureCollection<LineString> | null;
   entranceCollection: FeatureCollection<Polygon> | null;
   wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
@@ -76,7 +76,7 @@ function App() {
 
   const [entranceCollection, setEntranceCollection] =
     useState<FeatureCollection<Polygon> | null>(null);
-  const [roofCollection, setRoofCollection] =
+  const [boothCollection, setBoothCollection] =
     useState<FeatureCollection<Polygon> | null>(null);
   const [floorCollection, setFloorCollection] =
     useState<FeatureCollection<Polygon> | null>(null);
@@ -133,7 +133,7 @@ function App() {
       const walkwayCollection = await response_walkways.json();
       const entranceCollection = await response_entrance.json();
 
-      const roofFeatures = buffer(floorplanCollection, -0.1, {
+      const boothFeatures = buffer(floorplanCollection, -0.1, {
         units: "meters",
       }) as unknown as FeatureCollection<Polygon>;
 
@@ -147,7 +147,7 @@ function App() {
       }) as unknown as FeatureCollection<Polygon>;
 
       setFloorCollection(floorplanCollection);
-      setRoofCollection(roofFeatures);
+      setBoothCollection(boothFeatures);
       setWallCollection(wallFeatures);
       setWalkwayCollection(walkwayCollection);
       setEntranceCollection(entranceCollection);
@@ -191,7 +191,7 @@ function App() {
         activeOverlay={activeOverlay}
         setActiveOverlay={setActiveOverlay}
         doorPointCollection={doorPointCollection}
-        roofCollection={roofCollection}
+        boothCollection={boothCollection}
         walkwayCollection={walkwayCollection}
         entranceCollection={entranceCollection}
         wallCollection={wallCollection}
@@ -248,7 +248,7 @@ function MyMap({
   handleBoothSelect,
   activeOverlay,
   setActiveOverlay,
-  roofCollection,
+  boothCollection,
   walkwayCollection,
   entranceCollection,
   wallCollection,
@@ -393,10 +393,10 @@ function MyMap({
         </Source>
       )}
 
-      {roofCollection && (
-        <Source id="roof" type="geojson" data={roofCollection}>
+      {boothCollection && (
+        <Source id="booth" type="geojson" data={boothCollection}>
           <Layer
-            id="roof-layer"
+            id="booth-layer"
             type="fill-extrusion"
             paint={{
               "fill-extrusion-color": "#cbd5e1",
