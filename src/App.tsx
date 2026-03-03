@@ -27,9 +27,9 @@ export interface MyMapProps {
 
   origin: { lng: number; lat: number };
   dest: { lng: number; lat: number };
-  boothCollection: FeatureCollection<Polygon> | null;
+  visibleFeatureCollection: FeatureCollection<Polygon | MultiPolygon> | null;
   walkwayCollection: FeatureCollection<LineString> | null;
-  entranceCollection: FeatureCollection<Polygon> | null;
+  entranceCollection: FeatureCollection<Polygon | MultiPolygon> | null;
   wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
   doorPointCollection: FeatureCollection<Point> | null;
 }
@@ -75,11 +75,12 @@ function App() {
   >(null);
 
   const [entranceCollection, setEntranceCollection] =
-    useState<FeatureCollection<Polygon> | null>(null);
-  const [boothCollection, setBoothCollection] =
-    useState<FeatureCollection<Polygon> | null>(null);
-  const [floorCollection, setFloorCollection] =
-    useState<FeatureCollection<Polygon> | null>(null);
+    useState<FeatureCollection<Polygon | MultiPolygon> | null>(null);
+  const [visibleFeatureCollection, setVisibleFeatureCollection] =
+    useState<FeatureCollection<Polygon | MultiPolygon> | null>(null);
+  const [floorCollection, setFloorCollection] = useState<FeatureCollection<
+    Polygon | MultiPolygon
+  > | null>(null);
   const [wallCollection, setWallCollection] = useState<FeatureCollection<
     Polygon | MultiPolygon
   > | null>(null);
@@ -99,9 +100,10 @@ function App() {
   useEffect(() => {
     if (!(floorCollection && walkwayCollection)) return;
     const walkwayPoints = explode(walkwayCollection);
-    const bufferedBooths = floorCollection.features
-      .map((booth) => buffer(booth, 0.0000001))
-      .filter((booth): booth is Feature<Polygon> => Boolean(booth));
+    const bufferedBooths = floorCollection.features.flatMap((poly) => {
+      const booth = buffer(poly, 0.0000001);
+      return booth ? [booth] : [];
+    });
 
     const doorFeatures: Feature<Point>[] = [];
     for (const booth of bufferedBooths) {
@@ -129,26 +131,35 @@ function App() {
       );
       const response_entrance = await fetch("/entrance.geojson");
 
-      const floorplanCollection = await response.json();
+      const floorplanCollection: FeatureCollection<Polygon | MultiPolygon> =
+        await response.json();
       const walkwayCollection = await response_walkways.json();
-      const entranceCollection = await response_entrance.json();
+      const entranceCollection: FeatureCollection<Polygon | MultiPolygon> =
+        await response_entrance.json();
 
-      const boothFeatures = buffer(floorplanCollection, -0.1, {
+      const visibleFeatures = buffer(floorplanCollection, -0.1, {
         units: "meters",
-      }) as unknown as FeatureCollection<Polygon>;
-
-      const lineCollection = featureCollection(
-        floorplanCollection.features.map((poly: Feature<Polygon>) =>
-          polygonToLine(poly),
+      });
+      // 1. Filter out everything that isn't a room
+      const roomFeatures = featureCollection(
+        floorplanCollection.features.filter(
+          (poly) => poly.properties?.type === "room",
         ),
       );
-      const wallFeatures = buffer(lineCollection, 0.1, {
+      const roomPerimeters = featureCollection(
+        roomFeatures.features.flatMap((poly) => {
+          const line = polygonToLine(poly);
+          return line.type === "FeatureCollection" ? line.features : [line];
+        }),
+      );
+
+      const wallFeatures = buffer(roomPerimeters, 0.1, {
         units: "meters",
-      }) as unknown as FeatureCollection<Polygon>;
+      });
 
       setFloorCollection(floorplanCollection);
-      setBoothCollection(boothFeatures);
-      setWallCollection(wallFeatures);
+      setVisibleFeatureCollection(visibleFeatures || null);
+      setWallCollection(wallFeatures || null);
       setWalkwayCollection(walkwayCollection);
       setEntranceCollection(entranceCollection);
     }
@@ -191,7 +202,7 @@ function App() {
         activeOverlay={activeOverlay}
         setActiveOverlay={setActiveOverlay}
         doorPointCollection={doorPointCollection}
-        boothCollection={boothCollection}
+        visibleFeatureCollection={visibleFeatureCollection}
         walkwayCollection={walkwayCollection}
         entranceCollection={entranceCollection}
         wallCollection={wallCollection}
@@ -248,7 +259,7 @@ function MyMap({
   handleBoothSelect,
   activeOverlay,
   setActiveOverlay,
-  boothCollection,
+  visibleFeatureCollection,
   walkwayCollection,
   entranceCollection,
   wallCollection,
@@ -341,7 +352,7 @@ function MyMap({
       mapStyle="https://tiles.openfreemap.org/styles/positron"
     >
       {entranceCollection && (
-        <Source id="entrance" type="geojson" data={entranceCollection}>
+        <Source id="entrances-source" type="geojson" data={entranceCollection}>
           <Layer
             id="entrance-layer"
             type="fill-extrusion"
@@ -352,51 +363,17 @@ function MyMap({
               "fill-extrusion-opacity": 0.6,
             }}
           ></Layer>
-          <Layer
-            id="entrance-label-layer"
-            type="symbol"
-            layout={{
-              "text-field": ["get", "label"],
-              "text-font": ["Noto Sans Regular"],
-              "text-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                19,
-                10,
-                22,
-                16,
-              ],
-              "text-anchor": "center",
-              "text-padding": 2,
-              "text-transform": "uppercase",
-              "text-letter-spacing": 0.05,
-              "text-pitch-alignment": "viewport",
-              "text-rotation-alignment": "viewport",
-            }}
-            paint={{
-              "text-color": "#333333",
-              "text-halo-color": "rgba(255, 255, 255, 0.9)",
-              "text-halo-width": 1.5,
-              "text-opacity": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                18.5,
-                0,
-                19,
-                1,
-              ],
-            }}
-            minzoom={19}
-          />
         </Source>
       )}
 
-      {boothCollection && (
-        <Source id="booth" type="geojson" data={boothCollection}>
+      {visibleFeatureCollection && (
+        <Source
+          id="booths-source"
+          type="geojson"
+          data={visibleFeatureCollection}
+        >
           <Layer
-            id="booth-layer"
+            id="booths-layer"
             type="fill-extrusion"
             paint={{
               "fill-extrusion-color": "#cbd5e1",
@@ -406,7 +383,7 @@ function MyMap({
             }}
           />
           <Layer
-            id="booth-label-layer"
+            id="labels-layer"
             type="symbol"
             layout={{
               "text-field": ["get", "label"],
@@ -420,7 +397,7 @@ function MyMap({
                 22,
                 16,
               ],
-              "text-anchor": "center",
+              "text-anchor": "bottom",
               "text-padding": 2,
               "text-transform": "uppercase",
               "text-letter-spacing": 0.05,
