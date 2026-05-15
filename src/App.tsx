@@ -17,7 +17,6 @@ import type {
   Polygon,
 } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
-import type { ControlPosition, NavigationControlOptions } from "maplibre-gl";
 import { LngLatBounds } from "maplibre-gl";
 import PoiPopup from "./components/popup";
 import SearchBox from "./components/searchbox";
@@ -26,7 +25,6 @@ import type {
   HandleActiveOverlay,
   HandleBoothSelect,
   MyCoord,
-  Overlay,
 } from "./types";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
@@ -37,11 +35,8 @@ import {
   Map as M,
   Marker,
   Source,
-  useControl,
 } from "react-map-gl/maplibre";
-export type NavControlWithFitBoundsProps = NavigationControlOptions & {
-  position?: ControlPosition;
-};
+import NavControlWithFitBounds from "./components/NavControl";
 
 // interfaces
 
@@ -58,9 +53,10 @@ export interface MyMapProps {
 }
 
 function App() {
+  // undefined means: "This variable hasn't been given a value."
+  // null means: "This variable has been explicitly set to an empty object."
+  // undefined is strongly preferred over null for optional state.
   const [popupCoord, setPopupCoord] = useState<MyCoord | undefined>();
-  const [activeOverlay, setActiveOverlay] = useState<Overlay>("");
-
   const [entranceCollection, setEntranceCollection] =
     useState<FeatureCollection<Polygon | MultiPolygon> | null>(null);
   const [visibleFeatureCollection, setVisibleFeatureCollection] =
@@ -153,13 +149,16 @@ function App() {
     processFeatures();
   }, []);
 
-  const handleActiveOverlay: HandleActiveOverlay = (coords, overlay) => {
-    if (overlay === "") {
+  const handleActiveOverlay: HandleActiveOverlay = (overlay, coords) => {
+    if (overlay !== "searchbox" && history.state?.collapseSearchbox) {
+      history.back();
+    }
+    if (overlay === null) {
       setPopupCoord(undefined);
       return;
     }
 
-    if (overlay === "popup") {
+    if (overlay === "popup" && coords) {
       const isInside = new LngLatBounds([
         [-79.36003227, 43.81250021],
         [-79.3585528, 43.813410058],
@@ -167,19 +166,12 @@ function App() {
 
       if (isInside) {
         setPopupCoord(coords);
-        if (history.state?.collapseSearchbox) {
-          history.back();
-        }
-        if (activeOverlay !== "popup") {
-          setActiveOverlay("popup");
-        }
       }
     } else {
-      if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
+      setPopupCoord(undefined);
       if (!history.state?.collapseSearchbox) {
         history.pushState({ collapseSearchbox: true }, "", "");
       }
-      setPopupCoord(undefined);
     }
   };
 
@@ -236,37 +228,6 @@ function App() {
   );
 }
 
-function NavControlWithFitBounds(props: NavControlWithFitBoundsProps) {
-  useControl(
-    ({ mapLib }) => {
-      const nav = new mapLib.NavigationControl(props);
-
-      return {
-        onAdd: (map) => {
-          const container = nav.onAdd(map);
-          container.style.marginBottom =
-            "calc(2rem + env(safe-area-inset-bottom))";
-          const compassBtn = container.getElementsByClassName(
-            "maplibregl-ctrl-compass",
-          )[0] as HTMLButtonElement;
-
-          compassBtn.onclick = () => {
-            map.fitBounds([
-              [-79.36003227, 43.81250021],
-              [-79.3585528, 43.813410058],
-            ]);
-          };
-          return container;
-        },
-        onRemove: () => nav.onRemove(),
-      };
-    },
-    { position: props.position },
-  );
-
-  return null;
-}
-
 function MyMap({
   popupCoord,
   onMapClick,
@@ -314,7 +275,7 @@ function MyMap({
   }, [origin, dest, walkwayCollection]);
 
   function handleMapClick(e: MapLayerMouseEvent) {
-    onMapClick(e.lngLat, "popup");
+    onMapClick("popup", e.lngLat);
   }
 
   return (
@@ -464,7 +425,7 @@ function MyMap({
         <PoiPopup
           popupCoord={popupCoord}
           onBoothSelect={onBoothSelect}
-          onClose={() => onMapClick({ lng: 0, lat: 0 }, "")}
+          onClose={() => onMapClick(null)}
         />
       )}
       <Marker

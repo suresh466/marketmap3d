@@ -86,7 +86,7 @@ export default function SearchBox({
           id="boothsSearchDummy"
           placeholder="Search For a Booth"
           onFocus={() => {
-            onInputActive({ lng: 0, lat: 0 }, "searchbox");
+            onInputActive("searchbox");
             if (originSearchTerm === null || originSearchTerm === "") {
               setFocusedSearchbox("origin");
             } else {
