@@ -1,39 +1,5 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: maplibre requires static ids */
 
-export type NavControlWithFitBoundsProps = NavigationControlOptions & {
-  position?: ControlPosition;
-};
-
-export interface SearchBoxProps {
-  activeOverlay: "searchbox" | "popup" | null;
-  setActiveOverlay: React.Dispatch<
-    React.SetStateAction<"searchbox" | "popup" | null>
-  >;
-  onBoothSelect: (
-    coords: { lng: number; lat: number },
-    which: "origin" | "dest",
-  ) => void;
-  doors: FeatureCollection<Point>;
-}
-export interface MyMapProps {
-  activeOverlay: "popup" | "searchbox" | null;
-  setActiveOverlay: React.Dispatch<
-    React.SetStateAction<"searchbox" | "popup" | null>
-  >;
-  handleBoothSelect: (
-    coords: { lng: number; lat: number },
-    which: "origin" | "dest",
-  ) => void;
-
-  origin: { lng: number; lat: number };
-  dest: { lng: number; lat: number };
-  visibleFeatureCollection: FeatureCollection<Polygon | MultiPolygon> | null;
-  walkwayCollection: FeatureCollection<LineString> | null;
-  entranceCollection: FeatureCollection<Polygon | MultiPolygon> | null;
-  wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
-  doorPointCollection: FeatureCollection<Point> | null;
-}
-
 import "./App.css";
 import {
   booleanPointInPolygon,
@@ -55,6 +21,8 @@ import type {
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import type { ControlPosition, NavigationControlOptions } from "maplibre-gl";
 import { LngLatBounds } from "maplibre-gl";
+import PoiPopup from "./components/popup";
+import type { HandleBoothSelect } from "./types";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -64,10 +32,37 @@ import {
   Layer,
   Map as M,
   Marker,
-  Popup,
   Source,
   useControl,
 } from "react-map-gl/maplibre";
+export type NavControlWithFitBoundsProps = NavigationControlOptions & {
+  position?: ControlPosition;
+};
+
+// interfaces
+
+export interface SearchBoxProps {
+  activeOverlay: "searchbox" | "popup" | null;
+  setActiveOverlay: React.Dispatch<
+    React.SetStateAction<"searchbox" | "popup" | null>
+  >;
+  onBoothSelect: HandleBoothSelect;
+  doors: FeatureCollection<Point>;
+}
+export interface MyMapProps {
+  activeOverlay: "popup" | "searchbox" | null;
+  setActiveOverlay: React.Dispatch<
+    React.SetStateAction<"searchbox" | "popup" | null>
+  >;
+  handleBoothSelect: HandleBoothSelect;
+  origin: { lng: number; lat: number };
+  dest: { lng: number; lat: number };
+  visibleFeatureCollection: FeatureCollection<Polygon | MultiPolygon> | null;
+  walkwayCollection: FeatureCollection<LineString> | null;
+  entranceCollection: FeatureCollection<Polygon | MultiPolygon> | null;
+  wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
+  doorPointCollection: FeatureCollection<Point> | null;
+}
 
 function App() {
   const [activeOverlay, setActiveOverlay] = useState<
@@ -166,10 +161,7 @@ function App() {
     processFeatures();
   }, []);
 
-  function handleBoothSelect(
-    coords: { lng: number; lat: number },
-    which: string,
-  ) {
+  const handleBoothSelect: HandleBoothSelect = (coords, which) => {
     if (!floorCollection || !doorPointCollection) return;
     let nearestDoor = null;
 
@@ -193,7 +185,7 @@ function App() {
       lat: nearestDoor.geometry.coordinates[1],
     };
     which === "origin" ? setOrigin(coords) : setDest(coords);
-  }
+  };
 
   return (
     <>
@@ -469,45 +461,11 @@ function MyMap({
         </Source>
       )}
       {popupCoord && (
-        <Popup
-          className="tailwind-popup"
-          closeButton={false}
-          closeOnMove={true}
-          focusAfterOpen={false}
-          anchor="top-right"
-          longitude={popupCoord.lng}
-          latitude={popupCoord.lat}
+        <PoiPopup
+          popupCoord={popupCoord}
+          onBoothSelect={handleBoothSelect}
           onClose={() => setPopupCoord(undefined)}
-        >
-          <div className="flex flex-col gap-1 py-1 rounded-xl border shadow-black/25 shadow-[2px_2px_8px] backdrop-blur-lg border-white/90 bg-gray-300/10">
-            <button
-              className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-slate-300 border-white/60"
-              type="button"
-              onClick={() => {
-                handleBoothSelect(
-                  { lng: popupCoord.lng, lat: popupCoord.lat },
-                  "origin",
-                );
-                setPopupCoord(undefined);
-              }}
-            >
-              Im here
-            </button>
-            <button
-              className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-red-500/50 border-white/60"
-              type="button"
-              onClick={() => {
-                handleBoothSelect(
-                  { lng: popupCoord.lng, lat: popupCoord.lat },
-                  "dest",
-                );
-                setPopupCoord(undefined);
-              }}
-            >
-              Get here
-            </button>
-          </div>
-        </Popup>
+        />
       )}
       <Marker
         onDragEnd={(e) => handleBoothSelect(e.lngLat, "origin")}
