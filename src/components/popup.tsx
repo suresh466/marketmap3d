@@ -1,9 +1,8 @@
-import type { LngLat } from "react-map-gl/maplibre";
 import { Popup } from "react-map-gl/maplibre";
-import type { HandleBoothSelect } from "../types";
+import type { HandleBoothSelect, MyCoord } from "../types";
 
 interface PoiPopupProps {
-  popupCoord: LngLat;
+  popupCoord: MyCoord;
   onBoothSelect: HandleBoothSelect;
   onClose: () => void;
 }
@@ -29,10 +28,7 @@ export default function PoiPopup({
           className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-slate-300 border-white/60"
           type="button"
           onClick={() => {
-            onBoothSelect(
-              { lng: popupCoord.lng, lat: popupCoord.lat },
-              "origin",
-            );
+            onBoothSelect(popupCoord, "origin");
             onClose();
           }}
         >
@@ -42,7 +38,7 @@ export default function PoiPopup({
           className="py-1 px-4 mx-1 font-medium rounded-lg border-2 hover:opacity-60 bg-red-500/50 border-white/60"
           type="button"
           onClick={() => {
-            onBoothSelect({ lng: popupCoord.lng, lat: popupCoord.lat }, "dest");
+            onBoothSelect(popupCoord, "dest");
             onClose();
           }}
         >
