@@ -1,23 +1,21 @@
 import type { Feature, Point } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import type {
-  ActiveOverlay,
   DoorCollection,
+  HandleActiveOverlay,
   HandleBoothSelect,
 } from "../types";
 
 export interface SearchBoxProps {
-  activeOverlay: ActiveOverlay;
-  setActiveOverlay: React.Dispatch<React.SetStateAction<ActiveOverlay>>;
   onBoothSelect: HandleBoothSelect;
   doors: DoorCollection;
+  onInputActive: HandleActiveOverlay;
 }
 
 export default function SearchBox({
-  activeOverlay,
-  setActiveOverlay,
   onBoothSelect,
   doors,
+  onInputActive,
 }: SearchBoxProps) {
   const [filteredBooths, setFilteredBooths] = useState<Feature<Point>[] | null>(
     doors.features,
@@ -37,12 +35,6 @@ export default function SearchBox({
     addEventListener("popstate", handleBackNavigation);
     return () => removeEventListener("popstate", handleBackNavigation);
   }, []);
-
-  useEffect(() => {
-    if (activeOverlay === "popup" && history.state?.collapseSearchbox) {
-      history.back();
-    }
-  }, [activeOverlay]);
 
   useEffect(() => {
     if (!focusedSearchbox) return;
@@ -94,10 +86,7 @@ export default function SearchBox({
           id="boothsSearchDummy"
           placeholder="Search For a Booth"
           onFocus={() => {
-            if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
-            if (!history.state?.collapseSearchbox) {
-              history.pushState({ collapseSearchbox: true }, "", "");
-            }
+            onInputActive({ lng: 0, lat: 0 }, "searchbox");
             if (originSearchTerm === null || originSearchTerm === "") {
               setFocusedSearchbox("origin");
             } else {

@@ -22,13 +22,13 @@ import { LngLatBounds } from "maplibre-gl";
 import PoiPopup from "./components/popup";
 import SearchBox from "./components/searchbox";
 import type {
-  ActiveOverlay,
   DoorCollection,
+  HandleActiveOverlay,
   HandleBoothSelect,
   MyCoord,
+  Overlay,
 } from "./types";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { MapLayerMouseEvent, MapRef } from "react-map-gl/maplibre";
 import {
@@ -46,9 +46,9 @@ export type NavControlWithFitBoundsProps = NavigationControlOptions & {
 // interfaces
 
 export interface MyMapProps {
-  activeOverlay: ActiveOverlay;
-  setActiveOverlay: React.Dispatch<React.SetStateAction<ActiveOverlay>>;
-  handleBoothSelect: HandleBoothSelect;
+  popupCoord: MyCoord | undefined;
+  onBoothSelect: HandleBoothSelect;
+  onMapClick: HandleActiveOverlay;
   origin: { lng: number; lat: number };
   dest: { lng: number; lat: number };
   visibleFeatureCollection: FeatureCollection<Polygon | MultiPolygon> | null;
@@ -58,7 +58,8 @@ export interface MyMapProps {
 }
 
 function App() {
-  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
+  const [popupCoord, setPopupCoord] = useState<MyCoord | undefined>();
+  const [activeOverlay, setActiveOverlay] = useState<Overlay>("");
 
   const [entranceCollection, setEntranceCollection] =
     useState<FeatureCollection<Polygon | MultiPolygon> | null>(null);
@@ -152,6 +153,36 @@ function App() {
     processFeatures();
   }, []);
 
+  const handleActiveOverlay: HandleActiveOverlay = (coords, overlay) => {
+    if (overlay === "") {
+      setPopupCoord(undefined);
+      return;
+    }
+
+    if (overlay === "popup") {
+      const isInside = new LngLatBounds([
+        [-79.36003227, 43.81250021],
+        [-79.3585528, 43.813410058],
+      ]).contains(coords);
+
+      if (isInside) {
+        setPopupCoord(coords);
+        if (history.state?.collapseSearchbox) {
+          history.back();
+        }
+        if (activeOverlay !== "popup") {
+          setActiveOverlay("popup");
+        }
+      }
+    } else {
+      if (activeOverlay !== "searchbox") setActiveOverlay("searchbox");
+      if (!history.state?.collapseSearchbox) {
+        history.pushState({ collapseSearchbox: true }, "", "");
+      }
+      setPopupCoord(undefined);
+    }
+  };
+
   const handleBoothSelect: HandleBoothSelect = (coords, which) => {
     if (!floorCollection || !doorPointCollection) return;
     let nearestDoor = null;
@@ -181,9 +212,9 @@ function App() {
   return (
     <>
       <MyMap
-        handleBoothSelect={handleBoothSelect}
-        activeOverlay={activeOverlay}
-        setActiveOverlay={setActiveOverlay}
+        popupCoord={popupCoord}
+        onMapClick={handleActiveOverlay}
+        onBoothSelect={handleBoothSelect}
         visibleFeatureCollection={visibleFeatureCollection}
         walkwayCollection={walkwayCollection}
         entranceCollection={entranceCollection}
@@ -195,9 +226,8 @@ function App() {
       <div className="absolute top-2 inset-x-4 z-20 md:top-6 md:left-6 md:inset-auto md:w-1/4">
         {doorPointCollection && (
           <SearchBox
-            activeOverlay={activeOverlay}
-            setActiveOverlay={setActiveOverlay}
             onBoothSelect={handleBoothSelect}
+            onInputActive={handleActiveOverlay}
             doors={doorPointCollection}
           />
         )}
@@ -238,9 +268,9 @@ function NavControlWithFitBounds(props: NavControlWithFitBoundsProps) {
 }
 
 function MyMap({
-  handleBoothSelect,
-  activeOverlay,
-  setActiveOverlay,
+  popupCoord,
+  onMapClick,
+  onBoothSelect,
   visibleFeatureCollection,
   walkwayCollection,
   entranceCollection,
@@ -248,13 +278,8 @@ function MyMap({
   origin,
   dest,
 }: MyMapProps) {
-  const [popupCoord, setPopupCoord] = useState<MyCoord>();
   const [path, setPath] = useState(null);
   const mapRef = useRef<MapRef>(null);
-
-  useEffect(() => {
-    if (activeOverlay !== "popup") setPopupCoord(undefined);
-  }, [activeOverlay]);
 
   useEffect(() => {
     if (!walkwayCollection) return;
@@ -289,16 +314,7 @@ function MyMap({
   }, [origin, dest, walkwayCollection]);
 
   function handleMapClick(e: MapLayerMouseEvent) {
-    if (activeOverlay !== "popup") setActiveOverlay("popup");
-    const bounds = new LngLatBounds([
-      [-79.36003227, 43.81250021],
-      [-79.3585528, 43.813410058],
-    ]);
-
-    const isInside = bounds.contains(e.lngLat);
-    if (isInside) {
-      setPopupCoord(e.lngLat);
-    }
+    onMapClick(e.lngLat, "popup");
   }
 
   return (
@@ -447,12 +463,12 @@ function MyMap({
       {popupCoord && (
         <PoiPopup
           popupCoord={popupCoord}
-          onBoothSelect={handleBoothSelect}
-          onClose={() => setPopupCoord(undefined)}
+          onBoothSelect={onBoothSelect}
+          onClose={() => onMapClick({ lng: 0, lat: 0 }, "")}
         />
       )}
       <Marker
-        onDragEnd={(e) => handleBoothSelect(e.lngLat, "origin")}
+        onDragEnd={(e) => onBoothSelect(e.lngLat, "origin")}
         color="green"
         longitude={origin.lng}
         latitude={origin.lat}
@@ -462,7 +478,7 @@ function MyMap({
         <img className="h-10" src="./start-512.png" alt="humanoid" />
       </Marker>
       <Marker
-        onDragEnd={(e) => handleBoothSelect(e.lngLat, "dest")}
+        onDragEnd={(e) => onBoothSelect(e.lngLat, "dest")}
         color="red"
         longitude={dest.lng}
         latitude={dest.lat}
