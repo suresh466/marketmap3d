@@ -1,15 +1,16 @@
 import { explode, nearestPoint } from "@turf/turf";
-import type {
-  Feature,
-  FeatureCollection,
-  LineString,
-  MultiPolygon,
-  Point,
-  Polygon,
-} from "geojson";
+import type { Feature, Point } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
 import { useEffect, useRef, useState } from "react";
-import type { HandleActiveOverlay, HandleBoothSelect, MyCoord } from "../types";
+import type {
+  Entrances,
+  Floorplan,
+  HandleActiveOverlay,
+  HandleBoothSelect,
+  MyCoord,
+  Walkways,
+  Walls,
+} from "../types";
 import NavControlWithFitBounds from "./NavControl";
 import PoiPopup from "./popup";
 
@@ -19,10 +20,10 @@ export interface MyMapProps {
   onMapClick: HandleActiveOverlay;
   origin: MyCoord;
   dest: MyCoord;
-  visibleFeatureCollection: FeatureCollection<Polygon | MultiPolygon> | null;
-  walkwayCollection: FeatureCollection<LineString> | null;
-  entranceCollection: FeatureCollection<Polygon | MultiPolygon> | null;
-  wallCollection: FeatureCollection<Polygon | MultiPolygon> | null;
+  bufferedFloorplan: Floorplan | null;
+  walkways: Walkways | null;
+  entrances: Entrances | null;
+  walls: Walls | null;
 }
 
 import type { MapLayerMouseEvent, MapRef } from "react-map-gl/maplibre";
@@ -38,10 +39,10 @@ export default function MyMap({
   popupCoord,
   onMapClick,
   onBoothSelect,
-  visibleFeatureCollection,
-  walkwayCollection,
-  entranceCollection,
-  wallCollection,
+  bufferedFloorplan,
+  walkways,
+  entrances,
+  walls,
   origin,
   dest,
 }: MyMapProps) {
@@ -49,7 +50,7 @@ export default function MyMap({
   const mapRef = useRef<MapRef>(null);
 
   useEffect(() => {
-    if (!walkwayCollection) return;
+    if (!walkways) return;
 
     const originPoint: Feature<Point> = {
       type: "Feature",
@@ -69,11 +70,11 @@ export default function MyMap({
       properties: {},
     };
 
-    const walkwayPoints = explode(walkwayCollection);
+    const walkwayPoints = explode(walkways);
     const nearestStartPoint = nearestPoint(originPoint, walkwayPoints);
     const nearestFinishPoint = nearestPoint(destPoint, walkwayPoints);
 
-    const pathFinder = new PathFinder(walkwayCollection, { tolerance: 1e-7 });
+    const pathFinder = new PathFinder(walkways, { tolerance: 1e-7 });
     const foundPath = pathFinder.findPath(
       nearestStartPoint,
       nearestFinishPoint,
@@ -81,7 +82,7 @@ export default function MyMap({
     (foundPath?.path.length || 0) > 2
       ? setPath(pathToGeoJSON(foundPath))
       : setPath(null);
-  }, [origin, dest, walkwayCollection]);
+  }, [origin, dest, walkways]);
 
   function handleMapClick(e: MapLayerMouseEvent) {
     onMapClick("popup", e.lngLat);
@@ -118,8 +119,8 @@ export default function MyMap({
       // mapStyle="https://tiles.openfreemap.org/styles/positron"
       mapStyle="https://tiles.openfreemap.org/styles/positron"
     >
-      {entranceCollection && (
-        <Source id="entrances-source" type="geojson" data={entranceCollection}>
+      {entrances && (
+        <Source id="entrances-source" type="geojson" data={entrances}>
           <Layer
             id="entrance-layer"
             type="fill-extrusion"
@@ -133,12 +134,8 @@ export default function MyMap({
         </Source>
       )}
 
-      {visibleFeatureCollection && (
-        <Source
-          id="booths-source"
-          type="geojson"
-          data={visibleFeatureCollection}
-        >
+      {bufferedFloorplan && (
+        <Source id="booths-source" type="geojson" data={bufferedFloorplan}>
           <Layer
             id="booths-layer"
             type="fill-extrusion"
@@ -189,8 +186,8 @@ export default function MyMap({
           />
         </Source>
       )}
-      {wallCollection && (
-        <Source id="wall" type="geojson" data={wallCollection}>
+      {walls && (
+        <Source id="wall" type="geojson" data={walls}>
           <Layer
             id="wall-layer"
             type="fill-extrusion"

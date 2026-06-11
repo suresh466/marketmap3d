@@ -1,14 +1,10 @@
 import type { Feature, Point } from "geojson";
 import { useEffect, useRef, useState } from "react";
-import type {
-  DoorCollection,
-  HandleActiveOverlay,
-  HandleBoothSelect,
-} from "../types";
+import type { Doors, HandleActiveOverlay, HandleBoothSelect } from "../types";
 
 export interface SearchBoxProps {
   onBoothSelect: HandleBoothSelect;
-  doors: DoorCollection;
+  doors: Doors;
   onInputActive: HandleActiveOverlay;
 }
 

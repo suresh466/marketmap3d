@@ -1,8 +1,19 @@
-import type { FeatureCollection, Point } from "geojson";
+import type {
+	FeatureCollection,
+	LineString,
+	MultiPolygon,
+	Point,
+	Polygon,
+} from "geojson";
 
 export type MyCoord = { lng: number; lat: number };
 export type Overlay = "popup" | "searchbox" | null;
-export type DoorCollection = FeatureCollection<Point>;
+export type Doors = FeatureCollection<Point>;
+export type Floorplan = FeatureCollection<Polygon | MultiPolygon>;
+export type Entrances = FeatureCollection<Polygon | MultiPolygon>;
+export type Walls = FeatureCollection<Polygon | MultiPolygon>;
+// walkways must be type LineString
+export type Walkways = FeatureCollection<LineString>;
 
 export type HandleBoothSelect = (
 	coords: MyCoord,
