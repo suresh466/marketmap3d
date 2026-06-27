@@ -1,12 +1,13 @@
 import { explode, nearestPoint } from "@turf/turf";
-import type { Feature, Point } from "geojson";
 import PathFinder, { pathToGeoJSON } from "geojson-path-finder";
+import { LngLatBounds } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import type {
+  Booth,
   Entrances,
   Floorplan,
-  HandleActiveOverlay,
   HandleBoothSelect,
+  HandleMapClick,
   MyCoord,
   Walkways,
   Walls,
@@ -15,15 +16,13 @@ import NavControlWithFitBounds from "./NavControl";
 import PoiPopup from "./popup";
 
 export interface MyMapProps {
-  popupCoord: MyCoord | undefined;
   onBoothSelect: HandleBoothSelect;
-  onMapClick: HandleActiveOverlay;
   origin: MyCoord;
   dest: MyCoord;
-  bufferedFloorplan: Floorplan | null;
-  walkways: Walkways | null;
-  entrances: Entrances | null;
-  walls: Walls | null;
+  bufferedFloorplan?: Floorplan;
+  walkways?: Walkways;
+  entrances?: Entrances;
+  walls?: Walls;
 }
 
 import type { MapLayerMouseEvent, MapRef } from "react-map-gl/maplibre";
@@ -36,8 +35,6 @@ import {
 } from "react-map-gl/maplibre";
 
 export default function MyMap({
-  popupCoord,
-  onMapClick,
   onBoothSelect,
   bufferedFloorplan,
   walkways,
@@ -48,11 +45,12 @@ export default function MyMap({
 }: MyMapProps) {
   const [path, setPath] = useState(null);
   const mapRef = useRef<MapRef>(null);
+  const [popupCoord, setPopupCoord] = useState<MyCoord>();
 
   useEffect(() => {
     if (!walkways) return;
 
-    const originPoint: Feature<Point> = {
+    const originPoint: Booth = {
       type: "Feature",
       geometry: {
         type: "Point",
@@ -61,7 +59,7 @@ export default function MyMap({
       properties: {},
     };
 
-    const destPoint: Feature<Point> = {
+    const destPoint: Booth = {
       type: "Feature",
       geometry: {
         type: "Point",
@@ -84,9 +82,22 @@ export default function MyMap({
       : setPath(null);
   }, [origin, dest, walkways]);
 
-  function handleMapClick(e: MapLayerMouseEvent) {
-    onMapClick("popup", e.lngLat);
-  }
+  const handlePopupClose = () => {
+    setPopupCoord(undefined);
+  };
+
+  const handleMapClick: HandleMapClick = (coords) => {
+    if (coords) {
+      const isInside = new LngLatBounds([
+        [-79.36003227, 43.81250021],
+        [-79.3585528, 43.813410058],
+      ]).contains(coords);
+      if (isInside) setPopupCoord(coords);
+
+      // collapseSearchbox
+      if (history.state?.collapseSearchbox) history.back();
+    }
+  };
 
   return (
     <M
@@ -99,7 +110,7 @@ export default function MyMap({
       }}
       attributionControl={false}
       interactiveLayerIds={["floormap-extrusion"]}
-      onClick={(e) => handleMapClick(e)}
+      onClick={(e: MapLayerMouseEvent) => handleMapClick(e.lngLat)}
       initialViewState={{
         longitude: -79.35929253500002,
         latitude: 43.81295513573272,
@@ -231,7 +242,7 @@ export default function MyMap({
         <PoiPopup
           popupCoord={popupCoord}
           onBoothSelect={onBoothSelect}
-          onClose={() => onMapClick(null)}
+          onClose={handlePopupClose}
         />
       )}
       <Marker

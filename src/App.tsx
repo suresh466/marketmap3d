@@ -6,7 +6,6 @@ import {
   point,
   polygonToLine,
 } from "@turf/turf";
-import { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useState } from "react";
 import "./App.css";
@@ -16,7 +15,6 @@ import type {
   Doors,
   Entrances,
   Floorplan,
-  HandleActiveOverlay,
   HandleBoothSelect,
   MyCoord,
   Walkways,
@@ -27,14 +25,11 @@ function App() {
   // undefined means: "This variable hasn't been given a value."
   // null means: "This variable has been explicitly set to an empty object."
   // undefined is strongly preferred over null for optional state.
-  const [popupCoord, setPopupCoord] = useState<MyCoord | undefined>();
-  const [entrances, setEntrances] = useState<Entrances | null>(null);
-  const [bufferedFloorplan, setBufferedFloorplan] = useState<Floorplan | null>(
-    null,
-  );
-  const [walls, setWalls] = useState<Walls | null>(null);
-  const [walkways, setWalkways] = useState<Walkways | null>(null);
-  const [doors, setDoors] = useState<Doors | null>(null);
+  const [entrances, setEntrances] = useState<Entrances>();
+  const [bufferedFloorplan, setBufferedFloorplan] = useState<Floorplan>();
+  const [walls, setWalls] = useState<Walls>();
+  const [walkways, setWalkways] = useState<Walkways>();
+  const [doors, setDoors] = useState<Doors>();
   const [origin, setOrigin] = useState<MyCoord>({
     lng: -79.35914121022692,
     lat: 43.81261407787761,
@@ -74,8 +69,8 @@ function App() {
         units: "meters",
       });
 
-      setBufferedFloorplan(bufferedFloorplan || null);
-      setWalls(walls || null);
+      setBufferedFloorplan(bufferedFloorplan);
+      setWalls(walls);
       setWalkways(walkways);
       setEntrances(entrances);
       setDoors(doors);
@@ -83,39 +78,13 @@ function App() {
     processFeatures();
   }, []);
 
-  const handleActiveOverlay: HandleActiveOverlay = (overlay, coords) => {
-    if (overlay !== "searchbox" && history.state?.collapseSearchbox) {
-      history.back();
-    }
-    if (overlay === null) {
-      setPopupCoord(undefined);
-      return;
-    }
-
-    if (overlay === "popup" && coords) {
-      const isInside = new LngLatBounds([
-        [-79.36003227, 43.81250021],
-        [-79.3585528, 43.813410058],
-      ]).contains(coords);
-
-      if (isInside) {
-        setPopupCoord(coords);
-      }
-    } else {
-      setPopupCoord(undefined);
-      if (!history.state?.collapseSearchbox) {
-        history.pushState({ collapseSearchbox: true }, "", "");
-      }
-    }
-  };
-
   const handleBoothSelect: HandleBoothSelect = (coords, which) => {
     if (!bufferedFloorplan || !doors) return;
     let nearestDoor = null;
 
     for (const booth of bufferedFloorplan.features) {
       if (booleanPointInPolygon(point([coords.lng, coords.lat]), booth)) {
-        nearestDoor = doors?.features.find(
+        nearestDoor = doors.features.find(
           (b) => b.properties?.id === booth.properties?.id,
         );
         break;
@@ -135,8 +104,6 @@ function App() {
   return (
     <>
       <MyMap
-        popupCoord={popupCoord}
-        onMapClick={handleActiveOverlay}
         onBoothSelect={handleBoothSelect}
         bufferedFloorplan={bufferedFloorplan}
         walkways={walkways}
@@ -146,15 +113,11 @@ function App() {
         dest={dest}
       ></MyMap>
       {/* searchbox */}
-      <div className="absolute top-2 inset-x-4 z-20 md:top-6 md:left-6 md:inset-auto md:w-1/4">
-        {doors && (
-          <SearchBox
-            onBoothSelect={handleBoothSelect}
-            onInputActive={handleActiveOverlay}
-            doors={doors}
-          />
-        )}
-      </div>
+      {doors && (
+        <div className="absolute top-2 inset-x-4 z-20 md:top-6 md:left-6 md:inset-auto md:w-1/4">
+          <SearchBox onBoothSelect={handleBoothSelect} doors={doors} />
+        </div>
+      )}
     </>
   );
 }
